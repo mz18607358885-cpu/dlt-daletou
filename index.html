@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大乐透智能选号 · Mavis</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">🎯</span>
+      <h1>大乐透智能选号</h1>
+    </div>
+    <div class="header-info">
+      <div class="draw-info">
+        <span class="draw-label">当前期</span>
+        <span class="draw-period" id="drawPeriod">--</span>
+        <span class="draw-date" id="drawDate">--</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 密码弹窗 -->
+  <div class="modal" id="passwordModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass">
+      <div class="modal-icon">🔒</div>
+      <h2 id="passwordModalTitle">请输入访问密码</h2>
+      <p class="modal-hint" id="passwordModalHint">主链接密码 918918</p>
+      <input type="password" id="passwordInput" placeholder="6 位数字密码" maxlength="6" autocomplete="off" />
+      <div class="modal-error" id="passwordError"></div>
+      <button class="btn btn-primary btn-block" id="passwordSubmit">解锁</button>
+    </div>
+  </div>
+
+  <!-- 主内容(解锁后显示) -->
+  <main class="main" id="mainContent" hidden>
+    <!-- 最新开奖结果卡片 -->
+    <section class="latest-draw glass" id="latestDrawCard">
+      <div class="latest-draw-header">
+        <div class="latest-draw-title">
+          <span class="latest-draw-icon">🏆</span>
+          <h2>最新开奖结果</h2>
+        </div>
+        <div class="latest-draw-meta">
+          <span class="draw-period-big" id="latestDrawPeriod">--</span>
+          <span class="draw-date-big" id="latestDrawDate">--</span>
+        </div>
+      </div>
+      <div class="latest-draw-balls">
+        <div class="balls-block">
+          <div class="balls-label">前区</div>
+          <div class="balls" id="latestFrontBalls"></div>
+        </div>
+        <div class="balls-divider">+</div>
+        <div class="balls-block">
+          <div class="balls-label">后区</div>
+          <div class="balls" id="latestBackBalls"></div>
+        </div>
+      </div>
+      <div class="latest-draw-countdown">
+        <span class="countdown-label">距下期开奖</span>
+        <span class="countdown-time" id="countdownTime">--</span>
+        <button class="btn btn-sm btn-ghost countdown-refresh" id="btnRefreshLatest">立即刷新</button>
+      </div>
+    </section>
+
+    <!-- 操作区 -->
+    <section class="actions glass">
+      <button class="btn btn-primary" id="btnRegenerate">
+        <span class="btn-icon">🔄</span> 重新选号
+      </button>
+      <button class="btn btn-secondary" id="btnAdvance">
+        <span class="btn-icon">⏭</span> 更新最新一期
+      </button>
+      <button class="btn btn-secondary" id="btnShare">
+        <span class="btn-icon">🔗</span> 生成分享副链接
+      </button>
+      <button class="btn btn-ghost" id="btnToggleStats">
+        <span class="btn-icon">📊</span> 冷热统计
+      </button>
+    </section>
+
+    <!-- 5 组号卡片 -->
+    <section class="groups" id="groupsContainer">
+      <!-- JS 动态渲染 -->
+    </section>
+
+    <!-- 冷热统计区(可折叠) -->
+    <section class="stats-panel glass" id="statsPanel" hidden>
+      <h2>冷热统计 · 近 30 期</h2>
+      <div class="stats-section">
+        <h3>前区 (1-35) · 出现频次</h3>
+        <div class="ball-grid" id="frontBalls"></div>
+      </div>
+      <div class="stats-section">
+        <h3>后区 (1-12) · 出现频次</h3>
+        <div class="ball-grid ball-grid-back" id="backBalls"></div>
+      </div>
+    </section>
+
+    <!-- 副链接列表 -->
+    <section class="shares-panel glass" id="sharesPanel" hidden>
+      <h2>我的副链接</h2>
+      <p class="shares-hint">每个链接绑定到当前设备,转发给他人无法打开。</p>
+      <ul class="share-list" id="shareList"></ul>
+    </section>
+  </main>
+
+  <!-- 副链接弹窗 -->
+  <div class="modal" id="shareModal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass">
+      <div class="modal-icon">🔗</div>
+      <h2>副链接已生成</h2>
+      <p class="modal-hint">此链接已绑定本设备,转发给他人无法打开。</p>
+      <div class="share-url-box">
+        <input type="text" id="shareUrlInput" readonly />
+        <button class="btn btn-primary btn-sm" id="copyShareUrl">复制</button>
+      </div>
+      <button class="btn btn-ghost btn-block" id="closeShareModal">关闭</button>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>⚠️ 仅供娱乐参考,理性购彩 · 凭密码访问</span>
+  </footer>
+
+  <!-- 模块加载 -->
+  <script src="js/cwl_source.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/selector.js"></script>
+  <script src="js/security.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

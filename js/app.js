@@ -1,0 +1,531 @@
+// dist/js/app.js
+// 大乐透智能选号 - 主应用入口
+// 集成 CWLSource + Stats + Selector + Security
+
+(function () {
+  'use strict';
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  // ===== 状态 =====
+  const state = {
+    isShareMode: false,
+    shareLinkValid: false,
+    groups: [],
+    loading: false,
+    currentPeriod: null,        // 当前显示的期号
+    currentDate: null,           // 当前显示的开奖日期
+    usingFallback: false,        // 是否使用 fallback 数据
+  };
+
+  // ===== 工具 =====
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function show(id) { const el = document.getElementById(id); if (el) el.hidden = false; }
+  function hide(id) { const el = document.getElementById(id); if (el) el.hidden = true; }
+
+  function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+
+  // ===== 入口 =====
+  document.addEventListener('DOMContentLoaded', init);
+
+  async function init() {
+    setText('drawPeriod', '加载中…');
+    setText('drawDate', '');
+
+    // 1. 加载数据(优先静态,后台异步尝试升级)
+    try {
+      await loadData(false);
+      // 后台静默升级(不阻塞 UI)
+      CWLSource.tryUpgrade().then(function (upgraded) {
+        if (upgraded) {
+          // 数据升级成功,重新渲染
+          Stats.loadHistory(upgraded);
+          const last = Stats.getLastDraw();
+          if (last) {
+            setText('drawPeriod', last.期号);
+            setText('drawDate', last.开奖日期);
+            // 重新选号 + 刷新冷热统计
+            renderGroups(Selector.generate(5));
+            renderStats();
+            // 刷新最新开奖卡片
+            renderLatestDraw(last);
+            setFooterStatus('✓ 已从体彩 API 实时升级 · ' + (upgraded.meta?.fetchedAt || ''));
+          }
+        }
+      });
+    } catch (e) {
+      console.error('加载数据失败', e);
+      setText('drawPeriod', '加载失败');
+      setText('drawDate', e.message || '请稍后重试');
+      return;
+    }
+
+    // 2. 检查 URL hash(副链接模式)
+    const hash = window.location.hash;
+    if (hash.includes('share=')) {
+      // 副链接模式:验证设备绑定
+      state.isShareMode = true;
+      const verify = Security.verifyShareLink();
+      if (verify && verify.valid) {
+        state.shareLinkValid = true;
+        // 设备验证通过,现在需要副链接密码
+        showSharePasswordModal();
+      } else {
+        state.shareLinkValid = false;
+        showShareModeInvalid(verify ? verify.reason : 'unknown');
+      }
+      return;
+    }
+
+    // 3. 正常模式:检查主密码解锁
+    if (Security.isUnlocked('main')) {
+      unlockUI();
+      renderGroups(Selector.generate(5));
+      renderStats();
+      renderShareList();
+    } else {
+      showPasswordModal();
+    }
+  }
+
+  // ===== 数据加载 =====
+  async function loadData(forceRefresh) {
+    if (state.loading) return;
+    state.loading = true;
+
+    // 显示加载状态
+    if (forceRefresh) {
+      setText('drawPeriod', '刷新中…');
+      setText('drawDate', '');
+    }
+
+    try {
+      const data = await CWLSource.loadDefault();
+      if (data) {
+        Stats.loadHistory(data);
+        const last = Stats.getLastDraw();
+        if (last) {
+          state.currentPeriod = last.期号;
+          state.currentDate = last.开奖日期;
+          // 注意:实际真正"已开奖"的最后一期,可能 nextDraw 才是"当前等待开奖的"
+          // 但 Stats 默认 getLastDraw 返回的是已开奖的最后一条
+          setText('drawPeriod', last.期号);
+          setText('drawDate', last.开奖日期);
+        }
+        // 数据来源判断
+        const meta = data.meta || {};
+        if (meta.source === 'sporttery.cn') {
+          state.usingFallback = false;
+          setFooterStatus('✓ 已连接体彩官方数据源 · ' + meta.fetchedAt);
+        } else {
+          state.usingFallback = true;
+          setFooterStatus('⚠ 当前为本地缓存数据,刷新按钮重试实时');
+        }
+      }
+    } finally {
+      state.loading = false;
+    }
+  }
+
+  function setFooterStatus(text) {
+    const footer = document.querySelector('.footer span');
+    if (footer) {
+      // 保留第一个内容
+      const firstPart = '⚠️ 仅供娱乐参考,理性购彩 · 凭主密码 918918 访问';
+      footer.textContent = text || firstPart;
+    }
+  }
+
+  // ===== 密码弹窗(主链接) =====
+  function showPasswordModal() {
+    show('passwordModal');
+    const input = $('#passwordInput');
+    input.value = '';
+    input.placeholder = '请输入密码';
+    input.type = 'password';
+    input.maxLength = 6;
+    input.focus();
+    $('#passwordError').textContent = '';
+    $('#passwordModalTitle').textContent = '请输入访问密码';
+    $('#passwordModalHint').textContent = '这是私人智能选号工具,凭密码访问';
+  }
+
+  function showSharePasswordModal() {
+    show('passwordModal');
+    const input = $('#passwordInput');
+    input.value = '';
+    input.placeholder = '请输入副链接密码';
+    input.type = 'password';
+    input.maxLength = 6;
+    input.focus();
+    $('#passwordError').textContent = '';
+    $('#passwordModalTitle').textContent = '副链接验证';
+    $('#passwordModalHint').textContent = '此链接已绑定到指定设备,请输入副链接密码';
+  }
+
+  function hidePasswordModal() { hide('passwordModal'); }
+
+  $('#passwordSubmit').addEventListener('click', tryUnlock);
+  $('#passwordInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') tryUnlock();
+  });
+
+  function tryUnlock() {
+    const pw = $('#passwordInput').value.trim();
+    // 判断是主链接还是副链接模式
+    const type = state.isShareMode && state.shareLinkValid ? 'share' : 'main';
+    const ok = Security.unlock(pw, type);
+    if (ok) {
+      hidePasswordModal();
+      unlockUI();
+      if (state.isShareMode) {
+        // 副链接模式:只显示 banner + 5 组号 + 重新选号/更新/冷热,不显示副链接列表和分享按钮
+        showShareMode();
+      } else {
+        // 主链接模式:显示完整的副链接列表
+        renderShareList();
+      }
+      renderGroups(Selector.generate(5));
+      renderStats();
+    } else {
+      const remaining = Security.getLockoutRemainingMs(type);
+      if (remaining > 0) {
+        const mins = Math.ceil(remaining / 60000);
+        $('#passwordError').textContent = `密码错误次数过多,锁定 ${mins} 分钟后重试`;
+      } else {
+        const typeName = type === 'share' ? '副链接' : '主';
+        $('#passwordError').textContent = `${typeName}密码错误,请重试`;
+      }
+    }
+  }
+
+  function unlockUI() {
+    hide('passwordModal');
+    show('mainContent');
+    const last = Stats.getLastDraw();
+    if (last) {
+      setText('drawPeriod', last.期号);
+      setText('drawDate', last.开奖日期);
+      renderLatestDraw(last);
+      startCountdown();
+    }
+  }
+
+  // ===== 最新开奖结果卡片 =====
+  function renderLatestDraw(draw) {
+    if (!draw) return;
+    setText('latestDrawPeriod', draw.期号);
+    setText('latestDrawDate', draw.开奖日期);
+    // 渲染号码球
+    const frontHtml = (draw.前区 || []).map(n => `<div class="ball ball-front">${String(n).padStart(2, '0')}</div>`).join('');
+    const backHtml = (draw.后区 || []).map(n => `<div class="ball ball-back">${String(n).padStart(2, '0')}</div>`).join('');
+    setHTML('latestFrontBalls', frontHtml);
+    setHTML('latestBackBalls', backHtml);
+    // 检查是否过期(超过 3 天没新数据 = 可能有新一期未抓到)
+    checkStale(draw);
+  }
+
+  function setHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  }
+
+  // 标记"可能已过期"
+  function checkStale(draw) {
+    const card = document.getElementById('latestDrawCard');
+    if (!card || !draw) return;
+    const lastDate = new Date(draw.开奖日期);
+    const now = new Date();
+    const daysSince = (now - lastDate) / 86400000;
+    if (daysSince > 2) {
+      card.classList.add('is-stale');
+    } else {
+      card.classList.remove('is-stale');
+    }
+  }
+
+  // 计算下一期开奖时间:大乐透每周一、三、六 21:30
+  function getNextDrawTime() {
+    const now = new Date();
+    const DRAWS = [1, 3, 6]; // 周一、三、六
+    const DRAW_HOUR = 21;
+    const DRAW_MIN = 30;
+
+    // 找到下一个开奖日 21:30
+    for (let offset = 0; offset < 14; offset++) {
+      const d = new Date(now.getTime() + offset * 86400000);
+      d.setHours(DRAW_HOUR, DRAW_MIN, 0, 0);
+      if (DRAWS.includes(d.getDay()) && d.getTime() > now.getTime()) {
+        return d;
+      }
+    }
+    return null;
+  }
+
+  let _countdownTimer = null;
+  function startCountdown() {
+    if (_countdownTimer) clearInterval(_countdownTimer);
+    function tick() {
+      const target = getNextDrawTime();
+      const el = document.getElementById('countdownTime');
+      if (!el || !target) {
+        if (el) el.textContent = '--';
+        return;
+      }
+      const diff = target.getTime() - Date.now();
+      if (diff <= 0) {
+        // 已过开奖时间,提示"新一期可能已开奖"
+        el.textContent = '🔔 新一期可能已开奖,点"立即刷新"查看';
+        // 自动高亮卡片
+        const card = document.getElementById('latestDrawCard');
+        if (card) card.classList.add('is-stale');
+        return;
+      }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      let txt = '';
+      if (d > 0) txt += d + '天 ';
+      txt += String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      el.textContent = txt;
+    }
+    tick();
+    _countdownTimer = setInterval(tick, 1000);
+  }
+
+  // ===== 渲染 5 组号 =====
+  function renderGroups(groups) {
+    state.groups = groups;
+    const container = $('#groupsContainer');
+    container.innerHTML = groups.map((g, i) => groupCardHtml(g, i)).join('');
+  }
+
+  function groupCardHtml(g, i) {
+    const strategy = ['冷热平衡', '连号策略', '胆码集中', '温号集中', '跨度大'][i] || '智能组合';
+    const labels = g.前区.map(num => {
+      const item = Stats.getAllHotCold(30).前区.find(x => x.num === num);
+      return item ? item.label : '温';
+    });
+    const coldTags = g.前区.filter((num, idx) => labels[idx] === '冷').map(n => `<span class="tag tag-cold">${n}</span>`).join('');
+    const warmTags = g.前区.filter((num, idx) => labels[idx] === '温').map(n => `<span class="tag tag-warm">${n}</span>`).join('');
+    const hotTags = g.前区.filter((num, idx) => labels[idx] === '热').map(n => `<span class="tag tag-hot">${n}</span>`).join('');
+
+    const frontBalls = g.前区.map(n => `<div class="ball ball-front">${String(n).padStart(2, '0')}</div>`).join('');
+    const backBalls = g.后区.map(n => `<div class="ball ball-back">${String(n).padStart(2, '0')}</div>`).join('');
+
+    return `
+      <div class="group-card glass">
+        <div class="group-title">
+          <span class="group-num">${i + 1}</span>
+          <span class="group-strategy">${escapeHtml(strategy)}</span>
+        </div>
+        <div class="balls">
+          ${frontBalls}
+          <div class="ball-divider"></div>
+          ${backBalls}
+        </div>
+        <div class="group-remark">
+          <div class="remark-row"><span class="remark-label">和值</span> ${g.和值}</div>
+          <div class="remark-row"><span class="remark-label">奇偶</span> ${escapeHtml(g.奇偶比)}</div>
+          <div class="remark-row"><span class="remark-label">三区</span> ${escapeHtml(g.区间分布)}</div>
+          <div class="remark-row"><span class="remark-label">冷热</span> ${escapeHtml(g.冷热分配)}</div>
+          ${g.连号 !== '无' ? `<div class="remark-row"><span class="remark-label">连号</span> <span class="tag tag-info">${escapeHtml(g.连号)}</span></div>` : ''}
+          ${g.区间23胆码.length ? `<div class="remark-row"><span class="remark-label">23 区间</span> <span class="tag tag-info">${g.区间23胆码.join(' ')}</span></div>` : ''}
+          <div class="remark-row" style="margin-top:6px;">
+            <span class="tag tag-cold">冷</span>${coldTags}
+            <span class="tag tag-warm">温</span>${warmTags}
+            <span class="tag tag-hot">热</span>${hotTags}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ===== 操作按钮 =====
+  $('#btnRegenerate').addEventListener('click', () => {
+    renderGroups(Selector.generate(5));
+  });
+
+  // 强制刷新数据(从体彩 API 重新拉)
+  $('#btnAdvance').addEventListener('click', async () => {
+    if (state.loading) return;
+    const btn = $('#btnAdvance');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> 正在拉取最新...';
+    btn.disabled = true;
+    try {
+      await loadData(true);
+      renderGroups(Selector.generate(5));
+      renderStats();
+      // 重新渲染最新开奖卡片
+      const last = Stats.getLastDraw();
+      if (last) renderLatestDraw(last);
+      btn.innerHTML = '<span class="btn-icon">✓</span> 已更新到 ' + state.currentPeriod;
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+    } catch (e) {
+      btn.innerHTML = '<span class="btn-icon">✗</span> 失败: ' + (e.message || '网络错误');
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+    }
+  });
+
+  // '立即刷新'按钮(在最新开奖卡片里)
+  $('#btnRefreshLatest').addEventListener('click', async () => {
+    if (state.loading) return;
+    const btn = $('#btnRefreshLatest');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⏳ 刷新中...';
+    btn.disabled = true;
+    try {
+      await loadData(true);
+      renderGroups(Selector.generate(5));
+      renderStats();
+      const last = Stats.getLastDraw();
+      if (last) renderLatestDraw(last);
+      btn.innerHTML = '✓ 已刷新';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+    } catch (e) {
+      btn.innerHTML = '✗ 失败';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+    }
+  });
+
+  $('#btnShare').addEventListener('click', () => {
+    const result = Security.generateShareLink();
+    const fullUrl = window.location.origin + window.location.pathname + result.url;
+    $('#shareUrlInput').value = fullUrl;
+    show('shareModal');
+    setTimeout(() => $('#shareUrlInput').select(), 100);
+    renderShareList();
+  });
+
+  $('#copyShareUrl').addEventListener('click', () => {
+    const input = $('#shareUrlInput');
+    input.select();
+    try {
+      document.execCommand('copy');
+      $('#copyShareUrl').textContent = '已复制';
+      setTimeout(() => { $('#copyShareUrl').textContent = '复制'; }, 1500);
+    } catch (e) {
+      console.error('复制失败', e);
+    }
+  });
+
+  $('#closeShareModal').addEventListener('click', () => hide('shareModal'));
+
+  $('#btnToggleStats').addEventListener('click', () => {
+    const panel = $('#statsPanel');
+    if (panel.hidden) show('statsPanel');
+    else hide('statsPanel');
+  });
+
+  // ===== 副链接列表 =====
+  function renderShareList() {
+    const list = Security.getMyShareLinks();
+    const ul = $('#shareList');
+    if (list.length === 0) {
+      ul.innerHTML = '<li class="share-info">还没有副链接,点上方"生成分享副链接"创建</li>';
+      show('sharesPanel');
+      return;
+    }
+    ul.innerHTML = list.map(link => {
+      const created = new Date(link.createdAt).toLocaleString('zh-CN');
+      return `
+        <li class="share-item">
+          <div class="share-meta">
+            <span class="share-token">${escapeHtml((link.token || '').substring(0, 8))}…</span>
+            <span class="share-info">${escapeHtml((link.deviceHash || '通用').substring(0, 6))}… · ${escapeHtml(created)}</span>
+          </div>
+          <div class="share-actions">
+            <button class="btn btn-ghost btn-sm" data-token="${escapeHtml(link.token)}" data-action="copy">复制</button>
+            <button class="btn btn-ghost btn-sm" data-token="${escapeHtml(link.token)}" data-action="revoke">撤销</button>
+          </div>
+        </li>
+      `;
+    }).join('');
+
+    ul.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const token = e.target.dataset.token;
+        const action = e.target.dataset.action;
+        if (action === 'revoke') {
+          if (confirm('确认撤销这个副链接?撤销后无法再访问。')) {
+            Security.revokeShareLink(token);
+            renderShareList();
+          }
+        } else if (action === 'copy') {
+          const url = window.location.origin + window.location.pathname + '#share=' + token;  // 副链接无 lock
+          const ta = document.createElement('textarea');
+          ta.value = url;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); e.target.textContent = '已复制'; setTimeout(() => { e.target.textContent = '复制'; }, 1500); } catch (_) {}
+          document.body.removeChild(ta);
+        }
+      });
+    });
+
+    show('sharesPanel');
+  }
+
+  // ===== 冷热统计可视化 =====
+  function renderStats() {
+    const all = Stats.getAllHotCold(30);
+    const frontContainer = $('#frontBalls');
+    const backContainer = $('#backBalls');
+
+    frontContainer.innerHTML = all.前区.map(item => {
+      const gradient = item.label === '热' ? 'var(--hot-color)' : item.label === '温' ? 'var(--warm-color)' : 'var(--cold-color)';
+      const title = `号 ${item.num} · ${item.label} · 出现 ${item.count} 次 · 当前遗漏 ${item.currentMiss} · 最大遗漏 ${item.maxMiss}`;
+      return `<div class="stat-ball" style="background: ${gradient};" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
+    }).join('');
+
+    backContainer.innerHTML = all.后区.map(item => {
+      const gradient = item.label === '热' ? 'var(--hot-color)' : item.label === '温' ? 'var(--warm-color)' : 'var(--cold-color)';
+      const title = `号 ${item.num} · ${item.label} · 出现 ${item.count} 次 · 当前遗漏 ${item.currentMiss} · 最大遗漏 ${item.maxMiss}`;
+      return `<div class="stat-ball" style="background: ${gradient};" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
+    }).join('');
+  }
+
+  // ===== 副链接模式 UI =====
+  // 副链接 = 独立的"只读浏览 + 重新选号"模式
+  // 跟主链接唯一区别:不能生成分享副链接,其他功能(重新选号/更新最新一期/冷热统计)全保留
+  // 不显示任何 banner(纯净界面)
+  function showShareMode() {
+    // 不显示 banner
+    hide('shareModeBanner');
+    // 隐藏"生成分享副链接"按钮 - 副链接不能再分享
+    $('#btnShare').style.display = 'none';
+    // 隐藏副链接列表
+    hide('sharesPanel');
+  }
+
+  function showShareModeInvalid(reason) {
+    document.querySelector('.main')?.remove();
+    document.body.innerHTML = `
+      <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+      </div>
+      <div style="position:relative; z-index:10; padding:60px 20px; text-align:center;">
+        <div class="glass" style="max-width:480px; margin:0 auto; padding:40px;">
+          <div style="font-size:64px; margin-bottom:16px;">🔒</div>
+          <h2 style="margin-bottom:12px;">链接无效</h2>
+          <p style="color: rgba(255,255,255,0.7); margin-bottom:24px;">
+            此副链接已绑定到其他设备,无法访问。<br/>
+            ${reason ? '原因: ' + escapeHtml(reason) : ''}
+          </p>
+          <a href="${window.location.pathname}" class="btn btn-primary btn-block">返回主页</a>
+        </div>
+      </div>
+    `;
+  }
+
+  // exitShareMode 按钮已移除(副链接模式不再提供"返回主页")
+})();
