@@ -28,13 +28,13 @@
     </div>
   </header>
 
-  <!-- 密码弹窗 -->
-  <div class="modal" id="passwordModal">
+  <!-- 密码弹窗(默认隐藏,由 JS 决定是否显示) -->
+  <div class="modal" id="passwordModal" hidden>
     <div class="modal-backdrop"></div>
     <div class="modal-content glass">
       <div class="modal-icon">🔒</div>
       <h2 id="passwordModalTitle">请输入访问密码</h2>
-      <p class="modal-hint" id="passwordModalHint">主链接密码 918918</p>
+      <p class="modal-hint" id="passwordModalHint"></p>
       <input type="password" id="passwordInput" placeholder="6 位数字密码" maxlength="6" autocomplete="off" />
       <div class="modal-error" id="passwordError"></div>
       <button class="btn btn-primary btn-block" id="passwordSubmit">解锁</button>
