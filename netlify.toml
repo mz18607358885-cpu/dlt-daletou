@@ -1,5 +1,10 @@
 [build]
+  base = "."
   publish = "."
+  command = ""
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[headers]]
   for = "/*"
