@@ -437,8 +437,6 @@
       return { valid: false, reason: 'token_consumed' };
     }
 
-    // 副链接 = 任何设备 + 副链接密码 613613 都能用,不再做设备绑定验证
-
     // 查找元数据(尽力而为,跨设备也可能命中)
     const list = loadShareLinks();
     const found = list.find(function (x) { return x && x.token === token; });
@@ -446,7 +444,9 @@
     return {
       valid: true,
       token: token,
-      createdAt: found ? found.createdAt : null
+      createdAt: found ? found.createdAt : null,
+      // 标记需要前端调 Netlify Function 做设备绑定验证
+      requiresDeviceCheck: true
     };
   }
 

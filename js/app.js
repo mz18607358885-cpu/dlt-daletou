@@ -31,6 +31,44 @@
 
   function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 
+  // ===== 设备绑定(副链接 5 台设备上限) =====
+  async function checkDeviceBinding(token) {
+    const deviceHash = Security.getDeviceHash();
+    const endpoint = '/.netlify/functions/device-auth';
+
+    // 1. 查当前设备是否已在列表中
+    const getResp = await fetch(`${endpoint}?token=${encodeURIComponent(token)}&device=${encodeURIComponent(deviceHash)}`);
+    const getData = await getResp.json();
+
+    if (getData.deviceAllowed) {
+      return { allowed: true, count: getData.count, max: getData.max };
+    }
+
+    // 2. 不在列表 → 尝试注册(只有列表未满时才会成功)
+    const postResp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        deviceHash: deviceHash,
+        action: 'register'
+      })
+    });
+    const postData = await postResp.json();
+
+    if (postData.allowed) {
+      return { allowed: true, count: postData.count, max: postData.max, newlyRegistered: !postData.alreadyRegistered };
+    }
+
+    // 3. 注册失败(可能是设备数已满)
+    return {
+      allowed: false,
+      reason: postData.reason || 'device_blocked',
+      count: postData.count,
+      max: postData.max
+    };
+  }
+
   // ===== 入口 =====
   document.addEventListener('DOMContentLoaded', init);
 
@@ -73,9 +111,21 @@
       state.isShareMode = true;
       const verify = Security.verifyShareLink();
       if (verify && verify.valid) {
-        state.shareLinkValid = true;
-        // 设备验证通过,现在需要副链接密码
-        showSharePasswordModal();
+        // 调用 Netlify Function 做设备绑定检查(5台上限)
+        checkDeviceBinding(verify.token).then(deviceResult => {
+          if (deviceResult.allowed) {
+            state.shareLinkValid = true;
+            showSharePasswordModal();
+          } else {
+            state.shareLinkValid = false;
+            showShareModeInvalid(deviceResult.reason || 'device_blocked', deviceResult);
+          }
+        }).catch(err => {
+          // 网络错误时,降级为通过(容错,不影响体验)
+          console.warn('设备绑定检查失败,降级放行:', err);
+          state.shareLinkValid = true;
+          showSharePasswordModal();
+        });
       } else {
         state.shareLinkValid = false;
         showShareModeInvalid(verify ? verify.reason : 'unknown');
@@ -738,8 +788,17 @@
     hide('sharesPanel');
   }
 
-  function showShareModeInvalid(reason) {
+  function showShareModeInvalid(reason, extra) {
     document.querySelector('.main')?.remove();
+    const isDeviceLimit = reason === 'device_limit_reached';
+    const title = isDeviceLimit ? '设备数已满' : '链接无效';
+    const icon = isDeviceLimit ? '🚫' : '🔒';
+    let desc = '';
+    if (isDeviceLimit) {
+      desc = `此副链接已绑定 <strong>${extra?.count ?? 5}</strong> 台设备(上限 ${extra?.max ?? 5} 台),<br/>无法在新设备上打开。<br/><br/>请联系分享者:<br/>• 在已绑定的设备上撤销一台,或<br/>• 重新生成新的副链接`;
+    } else {
+      desc = '此副链接无法访问。<br/>' + (reason ? '原因: ' + escapeHtml(reason) : '');
+    }
     document.body.innerHTML = `
       <div class="bg-orbs">
         <div class="orb orb-1"></div>
@@ -747,12 +806,9 @@
       </div>
       <div style="position:relative; z-index:10; padding:60px 20px; text-align:center;">
         <div class="glass" style="max-width:480px; margin:0 auto; padding:40px;">
-          <div style="font-size:64px; margin-bottom:16px;">🔒</div>
-          <h2 style="margin-bottom:12px;">链接无效</h2>
-          <p style="color: rgba(255,255,255,0.7); margin-bottom:24px;">
-            此副链接已绑定到其他设备,无法访问。<br/>
-            ${reason ? '原因: ' + escapeHtml(reason) : ''}
-          </p>
+          <div style="font-size:64px; margin-bottom:16px;">${icon}</div>
+          <h2 style="margin-bottom:12px;">${title}</h2>
+          <p style="color: rgba(255,255,255,0.7); margin-bottom:24px;">${desc}</p>
           <a href="${window.location.pathname}" class="btn btn-primary btn-block">返回主页</a>
         </div>
       </div>
