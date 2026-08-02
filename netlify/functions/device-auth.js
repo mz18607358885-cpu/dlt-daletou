@@ -23,26 +23,47 @@ function jsonResponse(data, status = 200) {
 
 async function getDevices(token) {
   if (!token) return [];
-  const store = getStore(STORE_NAME);
-  const data = await store.get(token, { type: 'json' });
-  return Array.isArray(data) ? data : [];
+  try {
+    // 显式传 store config - 用 netlify.toml 里的 siteID 推断
+    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    const data = await store.get(token, { type: 'json' });
+    console.log('[getDevices]', token, '->', JSON.stringify(data));
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error('[getDevices] error:', e.message);
+    return [];
+  }
 }
 
 async function setDevices(token, devices) {
-  const store = getStore(STORE_NAME);
-  await store.setJSON(token, devices);
+  try {
+    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    await store.setJSON(token, devices);
+    console.log('[setDevices]', token, '<-', devices.length, 'devices');
+  } catch (e) {
+    console.error('[setDevices] error:', e.message);
+    throw e;
+  }
 }
 
 async function deleteAll(token) {
-  const store = getStore(STORE_NAME);
-  await store.delete(token);
+  try {
+    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    await store.delete(token);
+  } catch (e) {
+    console.error('[deleteAll] error:', e.message);
+    throw e;
+  }
 }
 
-export default async (req) => {
+export default async (req, context) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('', { status: 204, headers: CORS_HEADERS });
   }
+
+  // 调试信息
+  console.log('[device-auth]', req.method, '| siteID:', context.site?.id, '| deployID:', context.deploy?.id);
 
   try {
     const url = new URL(req.url);
@@ -139,3 +160,4 @@ export default async (req) => {
     return jsonResponse({ error: e.message || 'internal error' }, 500);
   }
 }
+
