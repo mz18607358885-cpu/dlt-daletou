@@ -87,11 +87,23 @@
       <button class="btn btn-ghost" id="btnToggleStats">
         <span class="btn-icon">📊</span> 冷热统计
       </button>
+      <button class="btn btn-ghost" id="btnToggleFavorites">
+        <span class="btn-icon">⭐</span> 我的收藏 <span id="favCount" class="fav-count"></span>
+      </button>
     </section>
 
     <!-- 5 组号卡片 -->
     <section class="groups" id="groupsContainer">
       <!-- JS 动态渲染 -->
+    </section>
+
+    <!-- 我的收藏面板(默认隐藏) -->
+    <section class="favorites-panel glass" id="favoritesPanel" hidden>
+      <div class="fav-header">
+        <h2>⭐ 我的收藏</h2>
+        <button class="btn btn-ghost btn-sm" id="btnClearFavorites">清空全部</button>
+      </div>
+      <div id="favoritesList"><!-- JS 动态渲染 --></div>
     </section>
 
     <!-- 冷热统计区(可折叠) -->

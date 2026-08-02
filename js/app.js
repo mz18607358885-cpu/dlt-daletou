@@ -320,8 +320,15 @@
     const frontBalls = g.前区.map(n => `<div class="ball ball-front">${String(n).padStart(2, '0')}</div>`).join('');
     const backBalls = g.后区.map(n => `<div class="ball ball-back">${String(n).padStart(2, '0')}</div>`).join('');
 
+    // 收藏:用 group 的 front+back 作为 key(同一组号只能收藏一次)
+    const favKey = g.前区.join(',') + '|' + g.后区.join(',');
+    const isFav = Favorites.has(favKey);
+
     return `
-      <div class="group-card glass">
+      <div class="group-card glass" data-group-idx="${i}">
+        <button class="fav-btn ${isFav ? 'is-fav' : ''}" data-action="toggle-fav" data-fav-key="${favKey}" title="${isFav ? '取消收藏' : '收藏这组号'}">
+          ${isFav ? '❤️' : '🤍'}
+        </button>
         <div class="group-title">
           <span class="group-num">${i + 1}</span>
           <span class="group-strategy">${escapeHtml(strategy)}</span>
@@ -343,10 +350,235 @@
             <span class="tag tag-warm">温</span>${warmTags}
             <span class="tag tag-hot">热</span>${hotTags}
           </div>
+          <div class="group-actions">
+            <button class="btn btn-sm btn-primary" data-action="copy-group" data-group-idx="${i}" title="复制为体彩买票格式">
+              <span class="btn-icon">📋</span> 复制这组号
+            </button>
+          </div>
         </div>
       </div>
     `;
   }
+
+  // ===== 收藏管理 =====
+  const Favorites = (function () {
+    const KEY = 'dlt:favorites';
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (_) { return []; }
+    }
+    function save(arr) {
+      localStorage.setItem(KEY, JSON.stringify(arr));
+    }
+    function has(key) {
+      return load().some(f => f.key === key);
+    }
+    function add(key, payload) {
+      const arr = load();
+      if (arr.some(f => f.key === key)) return false;
+      arr.unshift({
+        key: key,
+        group: payload.group,
+        strategy: payload.strategy,
+        period: payload.period || '',
+        savedAt: Date.now()
+      });
+      save(arr);
+      return true;
+    }
+    function remove(key) {
+      const arr = load();
+      const idx = arr.findIndex(f => f.key === key);
+      if (idx === -1) return false;
+      arr.splice(idx, 1);
+      save(arr);
+      return true;
+    }
+    function clear() {
+      save([]);
+    }
+    function all() { return load(); }
+    return { has, add, remove, clear, all, KEY };
+  })();
+
+  function updateFavCount() {
+    const cnt = Favorites.all().length;
+    const el = $('#favCount');
+    if (el) el.textContent = cnt > 0 ? `(${cnt})` : '';
+  }
+
+  function renderFavorites() {
+    const list = Favorites.all();
+    const container = $('#favoritesList');
+    if (!list.length) {
+      container.innerHTML = '<div class="fav-empty">还没有收藏。点击卡片右上角 ❤️ 收藏喜欢的号码组。</div>';
+      return;
+    }
+    container.innerHTML = list.map((f) => {
+      const frontBalls = f.group.前区.map(n => `<div class="ball ball-front">${String(n).padStart(2, '0')}</div>`).join('');
+      const backBalls = f.group.后区.map(n => `<div class="ball ball-back">${String(n).padStart(2, '0')}</div>`).join('');
+      const dateStr = new Date(f.savedAt).toLocaleString('zh-CN', { hour12: false });
+      return `
+        <div class="group-card glass fav-item">
+          <button class="fav-btn is-fav" data-action="remove-fav" data-fav-key="${f.key}" title="取消收藏">❤️</button>
+          <div class="group-title">
+            <span class="group-num">⭐</span>
+            <span class="group-strategy">${escapeHtml(f.strategy || '收藏号码')}</span>
+            <span class="fav-period">收藏于 ${dateStr}${f.period ? ' · 期号 ' + f.period : ''}</span>
+          </div>
+          <div class="balls">
+            ${frontBalls}
+            <div class="ball-divider"></div>
+            ${backBalls}
+          </div>
+          <div class="group-actions">
+            <button class="btn btn-sm btn-primary" data-action="copy-fav" data-fav-key="${f.key}" title="复制为体彩买票格式">
+              <span class="btn-icon">📋</span> 复制这组号
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ===== 复制 =====
+  function formatGroupForCopy(g) {
+    // 体彩买票标准格式:前 5 个 + 后 2 个,空格分隔
+    const all = g.前区.concat(g.后区);
+    return all.map(n => String(n).padStart(2, '0')).join(' ');
+  }
+
+  function copyText(text) {
+    // 优先用 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+
+  function fallbackCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (_) { return false; }
+  }
+
+  function showCopyToast(msg) {
+    let toast = $('#copyToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'copyToast';
+      toast.className = 'copy-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  // 卡片事件委托(收藏 + 复制)
+  $('#groupsContainer').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'toggle-fav') {
+      const key = btn.dataset.favKey;
+      const card = btn.closest('.group-card');
+      const idx = parseInt(card.dataset.groupIdx, 10);
+      const g = state.groups[idx];
+      const strategy = card.querySelector('.group-strategy')?.textContent || '';
+      if (Favorites.has(key)) {
+        Favorites.remove(key);
+        btn.classList.remove('is-fav');
+        btn.textContent = '🤍';
+        showCopyToast('已取消收藏');
+      } else {
+        Favorites.add(key, { group: g, strategy: strategy, period: state.currentPeriod || '' });
+        btn.classList.add('is-fav');
+        btn.textContent = '❤️';
+        showCopyToast('已收藏 ⭐');
+      }
+      updateFavCount();
+    } else if (action === 'copy-group') {
+      const idx = parseInt(btn.dataset.groupIdx, 10);
+      const g = state.groups[idx];
+      const text = formatGroupForCopy(g);
+      copyText(text).then(ok => {
+        showCopyToast(ok ? `已复制: ${text}` : '复制失败,请手动选择');
+      });
+    }
+  });
+
+  // 收藏面板事件委托
+  $('#favoritesList').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const key = btn.dataset.favKey;
+    if (action === 'remove-fav') {
+      Favorites.remove(key);
+      renderFavorites();
+      updateFavCount();
+      // 同步主页面爱心按钮状态
+      const mainBtn = document.querySelector(`#groupsContainer button[data-fav-key="${CSS.escape(key)}"]`);
+      if (mainBtn) {
+        mainBtn.classList.remove('is-fav');
+        mainBtn.textContent = '🤍';
+      }
+      showCopyToast('已取消收藏');
+    } else if (action === 'copy-fav') {
+      const list = Favorites.all();
+      const item = list.find(f => f.key === key);
+      if (item) {
+        const text = formatGroupForCopy(item.group);
+        copyText(text).then(ok => {
+          showCopyToast(ok ? `已复制: ${text}` : '复制失败,请手动选择');
+        });
+      }
+    }
+  });
+
+  // 切换收藏面板显示
+  $('#btnToggleFavorites').addEventListener('click', () => {
+    const panel = $('#favoritesPanel');
+    if (panel.hidden) {
+      renderFavorites();
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  $('#btnClearFavorites').addEventListener('click', () => {
+    if (Favorites.all().length === 0) {
+      showCopyToast('没有收藏可以清空');
+      return;
+    }
+    if (confirm('确认清空所有收藏?此操作不可恢复。')) {
+      Favorites.clear();
+      renderFavorites();
+      updateFavCount();
+      // 同步主页面所有爱心按钮
+      document.querySelectorAll('#groupsContainer button[data-fav-key]').forEach(b => {
+        b.classList.remove('is-fav');
+        b.textContent = '🤍';
+      });
+      showCopyToast('已清空收藏');
+    }
+  });
 
   // ===== 操作按钮 =====
   $('#btnRegenerate').addEventListener('click', () => {

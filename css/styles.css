@@ -533,3 +533,104 @@ body {
   .btn { padding: 8px 14px; font-size: 13px; }
   .modal-content { padding: 24px; }
 }
+
+/* ===== 收藏按钮(卡片右上角) ===== */
+.group-card { position: relative; }
+.fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+  transition: transform .15s, background .15s;
+}
+.fav-btn:hover { transform: scale(1.15); background: rgba(255, 255, 255, 0.18); }
+.fav-btn.is-fav { background: rgba(255, 80, 100, 0.18); border-color: rgba(255, 80, 100, 0.4); }
+.fav-btn.is-fav:hover { background: rgba(255, 80, 100, 0.28); }
+
+/* 卡片底部操作区(复制按钮) */
+.group-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.group-actions .btn { flex: 1; min-width: 120px; }
+
+/* 收藏数量徽章 */
+.fav-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+/* 收藏面板 */
+.favorites-panel {
+  margin: 0 auto 24px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  position: relative;
+  z-index: 5;
+}
+.fav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.fav-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.fav-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.fav-item .fav-period {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-weight: normal;
+}
+
+/* 复制提示 toast */
+.copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20, 20, 35, 0.95);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: 90vw;
+  text-align: center;
+  word-break: break-all;
+}
+.copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
