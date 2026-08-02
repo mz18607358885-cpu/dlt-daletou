@@ -1,0 +1,9 @@
+{
+  "name": "dlt-lottery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "大乐透智能选号 - Netlify Functions",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
