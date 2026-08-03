@@ -713,3 +713,8 @@ body {
   border-top: 1px dashed rgba(255, 255, 255, 0.08);
   text-align: right;
 }
+.device-toggle {
+  font-size: 11px;
+  padding: 4px 10px;
+  margin-left: 8px;
+}

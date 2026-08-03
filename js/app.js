@@ -111,6 +111,7 @@
       state.isShareMode = true;
       const verify = Security.verifyShareLink();
       if (verify && verify.valid) {
+        state.shareToken = verify.token;  // 记录当前 share token,供设备管理用
         // 调用 Netlify Function 做设备绑定检查(5台上限)
         checkDeviceBinding(verify.token).then(deviceResult => {
           if (deviceResult.allowed) {
@@ -662,19 +663,27 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  async function renderDevices() {
-    const list = Favorites.all(); // 复用 shareLinks 存储(getMyShareLinks 等价)
-    // 实际上 shareLinks 直接 loadShareLinks() 获取更全
+  // filterToken: 副链接模式 = 当前 token;主链接模式 = undefined(全部)
+  async function renderDevices(filterToken) {
     const allLinks = Security.getMyShareLinks();
+    // 过滤(副链接模式只显示自己)
+    const links = filterToken
+      ? allLinks.filter(l => l.token === filterToken)
+      : allLinks;
     const container = $('#devicesList');
 
-    if (!allLinks.length) {
-      container.innerHTML = '<div class="fav-empty">还没有副链接。先生成一个副链接(主页面点"生成分享副链接"),再回来这里管理设备。</div>';
+    // 副链接模式:加上提示
+    const isShareView = !!filterToken;
+
+    if (!links.length) {
+      container.innerHTML = isShareView
+        ? '<div class="fav-empty">本副链接未在本设备生成过,无法查看设备列表。<br/><small>设备管理只有创建过副链接的设备才看得到。</small></div>'
+        : '<div class="fav-empty">还没有副链接。先生成一个副链接(主页面点"生成分享副链接"),再回来这里管理设备。</div>';
       return;
     }
 
-    // 并发查询每个 token 的设备数
-    const summaries = await Promise.all(allLinks.map(async (link) => {
+    // 并发查询每个 token 的设备数(只拉摘要,具体设备点展开才拉)
+    const summaries = await Promise.all(links.map(async (link) => {
       try {
         const data = await fetchDeviceList(link.token);
         return { link, data };
@@ -683,22 +692,25 @@
       }
     }));
 
+    // 副链接模式:默认展开;主链接模式:默认折叠
     container.innerHTML = summaries.map(({ link, data }) => {
       const full = data.full || data.count >= data.max;
       const statusClass = full ? 'is-full' : (data.count > 0 ? 'is-partial' : 'is-empty');
       const statusText = full ? '已满' : (data.count > 0 ? `${data.count}/${data.max} 台` : '空');
       const shortToken = link.token.substring(0, 8) + '...';
       const createdAt = link.createdAt ? formatDateTime(link.createdAt) : '—';
+      const defaultExpanded = isShareView || data.devices.length === 0;
       return `
-        <div class="device-link-card glass-inner" data-token="${escapeHtml(link.token)}">
+        <div class="device-link-card glass-inner" data-token="${escapeHtml(link.token)}" data-expanded="${defaultExpanded}">
           <div class="device-link-header">
             <div class="device-link-info">
               <code class="device-link-token">${shortToken}</code>
               <span class="device-link-created">生成于 ${createdAt}</span>
             </div>
             <span class="device-link-status ${statusClass}">${statusText}</span>
+            <button class="btn btn-sm btn-ghost device-toggle" data-action="toggle-detail" data-token="${escapeHtml(link.token)}">${defaultExpanded ? '收起' : '查看设备'}</button>
           </div>
-          <div class="device-list" data-token="${escapeHtml(link.token)}">
+          <div class="device-list" data-token="${escapeHtml(link.token)}" ${defaultExpanded ? '' : 'hidden'}>
             ${data.devices.length === 0 ? '<div class="device-empty">暂无设备绑定</div>' :
               data.devices.map(d => `
                 <div class="device-row ${d.isCurrent ? 'is-current' : ''}" data-hash="${escapeHtml(d.hash)}">
@@ -711,7 +723,7 @@
             }
           </div>
           ${data.devices.length > 0 ? `
-            <div class="device-link-actions">
+            <div class="device-link-actions" ${defaultExpanded ? '' : 'hidden'} data-token="${escapeHtml(link.token)}">
               <button class="btn btn-sm btn-ghost" data-action="clear-devices" data-token="${escapeHtml(link.token)}">清空该链接所有设备</button>
             </div>
           ` : ''}
@@ -725,10 +737,11 @@
     if (panel.hidden) {
       panel.hidden = false;
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // 显示加载状态
       $('#devicesList').innerHTML = '<div class="fav-empty">加载中...</div>';
       try {
-        await renderDevices();
+        // 副链接模式:只显示当前 token;主链接模式:全部
+        const filterToken = state.isShareMode ? state.shareToken : null;
+        await renderDevices(filterToken);
       } catch (e) {
         $('#devicesList').innerHTML = `<div class="fav-empty">加载失败: ${escapeHtml(e.message)}</div>`;
       }
@@ -744,6 +757,19 @@
     const action = btn.dataset.action;
     const token = btn.dataset.token;
     if (!token) return;
+
+    if (action === 'toggle-detail') {
+      // 展开/收起某个副链接的设备详情
+      const card = btn.closest('.device-link-card');
+      const list = card.querySelector('.device-list');
+      const actions = card.querySelector('.device-link-actions');
+      const isHidden = list.hidden;
+      list.hidden = !isHidden;
+      if (actions) actions.hidden = !isHidden;
+      btn.textContent = isHidden ? '收起' : '查看设备';
+      card.dataset.expanded = isHidden ? 'true' : 'false';
+      return;
+    }
 
     if (action === 'remove-device') {
       const deviceHash = btn.dataset.hash;
@@ -941,6 +967,8 @@
     $('#btnShare').style.display = 'none';
     // 隐藏副链接列表
     hide('sharesPanel');
+    // 设备管理按钮在副链接模式仍然可用(只看自己这个 token)
+    // 默认显示(已经在 index.html 里)
   }
 
   function showShareModeInvalid(reason, extra) {
