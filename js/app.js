@@ -278,6 +278,30 @@
     const backHtml = (draw.后区 || []).map(n => `<div class="ball ball-back">${String(n).padStart(2, '0')}</div>`).join('');
     setHTML('latestFrontBalls', frontHtml);
     setHTML('latestBackBalls', backHtml);
+
+    // 计算并显示开奖号码统计
+    const front = draw.前区 || [];
+    if (front.length === 5) {
+      // 和值:前区 5 个号码之和
+      const sum = front.reduce((a, b) => a + b, 0);
+      setText('statSum', sum);
+
+      // 跨度:前区最大 - 最小
+      const span = Math.max(...front) - Math.min(...front);
+      setText('statSpan', span);
+
+      // 区间比:三区 [1-10][11-20][21-35] 的个数
+      const z1 = front.filter(n => n <= 10).length;
+      const z2 = front.filter(n => n >= 11 && n <= 20).length;
+      const z3 = front.filter(n => n >= 21).length;
+      setText('statZone', `${z1}:${z2}:${z3}`);
+
+      // 奇偶比
+      const odd = front.filter(n => n % 2 === 1).length;
+      const even = 5 - odd;
+      setText('statOdd', `${odd}:${even}`);
+    }
+
     // 检查是否过期(超过 3 天没新数据 = 可能有新一期未抓到)
     checkStale(draw);
   }
@@ -899,8 +923,31 @@
   });
 
   // ===== 操作按钮 =====
+  // 当前选号数量(默认 3 组)
+  let currentGroupCount = 3;
+
+  function regenerate() {
+    const groups = Selector.generate(currentGroupCount);
+    const container = $('#groupsContainer');
+    container.hidden = false;
+    renderGroups(groups);
+    // 滚动到号码区
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   $('#btnRegenerate').addEventListener('click', () => {
-    renderGroups(Selector.generate(5));
+    regenerate();
+  });
+
+  // 选组数切换
+  document.querySelectorAll('.group-count-picker .picker-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.group-count-picker .picker-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentGroupCount = parseInt(btn.dataset.count, 10);
+      // 切换后立即重新生成
+      regenerate();
+    });
   });
 
   // 强制刷新数据(从体彩 API 重新拉)

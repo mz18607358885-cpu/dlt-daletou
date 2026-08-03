@@ -750,3 +750,71 @@ body {
 }
 #deviceSearchResult { margin-bottom: 16px; }
 #deviceSearchResult .fav-empty { padding: 20px; }
+
+/* 选组数选择器 */
+.group-count-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-left: 4px;
+}
+.picker-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.picker-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  padding: 5px 12px;
+  font-size: 13px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all .15s;
+  font-weight: 500;
+}
+.picker-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.picker-btn.active {
+  background: rgba(80, 180, 255, 0.22);
+  color: rgb(120, 200, 255);
+  font-weight: 600;
+}
+
+/* 开奖号码统计行 */
+.latest-draw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 12px 0;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.stat-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+@media (max-width: 768px) {
+  .latest-draw-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .group-count-picker { margin-left: 0; margin-top: 6px; }
+}

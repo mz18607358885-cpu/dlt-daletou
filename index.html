@@ -66,6 +66,12 @@
           <div class="balls" id="latestBackBalls"></div>
         </div>
       </div>
+      <div class="latest-draw-stats" id="latestDrawStats">
+        <div class="stat-item"><span class="stat-label">和值</span><span class="stat-val" id="statSum">--</span></div>
+        <div class="stat-item"><span class="stat-label">跨度</span><span class="stat-val" id="statSpan">--</span></div>
+        <div class="stat-item"><span class="stat-label">区间比</span><span class="stat-val" id="statZone">--</span></div>
+        <div class="stat-item"><span class="stat-label">奇偶比</span><span class="stat-val" id="statOdd">--</span></div>
+      </div>
       <div class="latest-draw-countdown">
         <span class="countdown-label">距下期开奖</span>
         <span class="countdown-time" id="countdownTime">--</span>
@@ -76,8 +82,14 @@
     <!-- 操作区 -->
     <section class="actions glass">
       <button class="btn btn-primary" id="btnRegenerate">
-        <span class="btn-icon">🔄</span> 重新选号
+        <span class="btn-icon">🎯</span> 智能选号
       </button>
+      <div class="group-count-picker">
+        <span class="picker-label">生成组数:</span>
+        <button class="picker-btn" data-count="1">1 组</button>
+        <button class="picker-btn active" data-count="3">3 组</button>
+        <button class="picker-btn" data-count="5">5 组</button>
+      </div>
       <button class="btn btn-secondary" id="btnAdvance">
         <span class="btn-icon">⏭</span> 更新最新一期
       </button>
@@ -93,6 +105,11 @@
       <button class="btn btn-ghost" id="btnToggleDevices">
         <span class="btn-icon">📱</span> 设备管理
       </button>
+    </section>
+
+    <!-- 5 组号卡片 - 默认隐藏,点智能选号才显示 -->
+    <section class="groups" id="groupsContainer" hidden>
+      <!-- JS 动态渲染 -->
     </section>
 
     <!-- 5 组号卡片 -->
