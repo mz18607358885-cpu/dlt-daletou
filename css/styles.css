@@ -818,3 +818,63 @@ body {
   .latest-draw-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .group-count-picker { margin-left: 0; margin-top: 6px; }
 }
+
+/* 历史开奖记录面板 */
+.history-panel { margin: 0 auto 24px; padding: 20px 24px; border-radius: 16px; position: relative; z-index: 5; }
+.history-panel-hint { font-size: 12px; color: var(--text-muted); }
+.history-list {
+  max-height: 540px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.history-list::-webkit-scrollbar { width: 6px; }
+.history-list::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 3px; }
+.history-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
+.history-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
+.history-table { display: flex; flex-direction: column; gap: 4px; }
+.history-row {
+  display: grid;
+  grid-template-columns: 80px 110px 1fr 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
+  transition: background .15s;
+}
+.history-row:hover { background: rgba(255, 255, 255, 0.07); }
+.history-head {
+  background: rgba(80, 180, 255, 0.1);
+  border-color: rgba(80, 180, 255, 0.2);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.history-head:hover { background: rgba(80, 180, 255, 0.1); }
+.h-period { font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 600; color: #fff; }
+.h-date { font-size: 12px; color: rgba(255, 255, 255, 0.7); }
+.h-balls { display: flex; gap: 3px; flex-wrap: wrap; }
+.h-ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.h-ball-front { background: linear-gradient(135deg, #ff5e62, #ff2d55); }
+.h-ball-back { background: linear-gradient(135deg, #4facfe, #00c4ff); }
+@media (max-width: 768px) {
+  .history-row { grid-template-columns: 70px 1fr; gap: 6px; }
+  .history-row .h-date, .history-row .h-balls:nth-of-type(2) { grid-column: 2; }
+  .history-row .h-balls:first-of-type { grid-column: 1 / -1; }
+}

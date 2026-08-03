@@ -105,6 +105,9 @@
       <button class="btn btn-ghost" id="btnToggleDevices">
         <span class="btn-icon">📱</span> 设备管理
       </button>
+      <button class="btn btn-ghost" id="btnToggleHistory">
+        <span class="btn-icon">📜</span> 历史开奖
+      </button>
     </section>
 
     <!-- 5 组号卡片 - 默认隐藏,点智能选号才显示 -->
@@ -141,6 +144,15 @@
       <div id="deviceSearchResult"><!-- 查询结果 --></div>
 
       <div id="devicesList"><!-- 自己的副链接列表 --></div>
+    </section>
+
+    <!-- 历史开奖面板(默认隐藏) -->
+    <section class="history-panel glass" id="historyPanel" hidden>
+      <div class="fav-header">
+        <h2>📜 今年开奖记录</h2>
+        <span class="history-panel-hint">2026 年所有期开奖号码</span>
+      </div>
+      <div class="history-list" id="historyList"><!-- JS 动态渲染 --></div>
     </section>
 
     <!-- 冷热统计区(可折叠) -->

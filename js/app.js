@@ -861,6 +861,67 @@
     if (e.key === 'Enter') $('#deviceSearchBtn').click();
   });
 
+  // ===== 历史开奖记录(2026 年) =====
+  function renderHistory() {
+    const hist = (typeof Stats !== 'undefined') ? Stats.getHistory() : null;
+    const draws = (hist && Array.isArray(hist.draws)) ? hist.draws : [];
+    if (!draws.length) {
+      $('#historyList').innerHTML = '<div class="fav-empty">数据未加载,请先刷新页面</div>';
+      return;
+    }
+    renderHistoryFromDraws(draws);
+  }
+
+  function renderHistoryFromDraws(draws) {
+    // 只显示 2026 年的期
+    const yearDraws = draws
+      .filter(d => d.开奖日期 && d.开奖日期.startsWith('2026'))
+      .sort((a, b) => parseInt(b.期号) - parseInt(a.期号)); // 倒序(最新在前)
+
+    if (!yearDraws.length) {
+      $('#historyList').innerHTML = '<div class="fav-empty">今年还没有开奖数据</div>';
+      return;
+    }
+
+    $('#historyList').innerHTML = `
+      <div class="history-table">
+        <div class="history-row history-head">
+          <span class="h-period">期号</span>
+          <span class="h-date">开奖日</span>
+          <span class="h-balls">前区</span>
+          <span class="h-balls">后区</span>
+        </div>
+        ${yearDraws.map(d => {
+          const front = (d.前区 || []).map(n => `<span class="h-ball h-ball-front">${String(n).padStart(2, '0')}</span>`).join('');
+          const back = (d.后区 || []).map(n => `<span class="h-ball h-ball-back">${String(n).padStart(2, '0')}</span>`).join('');
+          return `
+            <div class="history-row">
+              <span class="h-period">${escapeHtml(d.期号)}</span>
+              <span class="h-date">${escapeHtml(d.开奖日期)}</span>
+              <span class="h-balls">${front}</span>
+              <span class="h-balls">${back}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  $('#btnToggleHistory').addEventListener('click', () => {
+    const panel = $('#historyPanel');
+    if (panel.hidden) {
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      try {
+        renderHistory();
+      } catch (e) {
+        $('#historyList').innerHTML = `<div class="fav-empty">加载失败: ${escapeHtml(e.message)}</div>`;
+      }
+    } else {
+      panel.hidden = true;
+    }
+  });
+
   // 设备管理事件委托
   $('#devicesList').addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -939,14 +1000,13 @@
     regenerate();
   });
 
-  // 选组数切换
+  // 选组数切换(只更新状态,不立即生成号码,需要点智能选号才生成)
   document.querySelectorAll('.group-count-picker .picker-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.group-count-picker .picker-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentGroupCount = parseInt(btn.dataset.count, 10);
-      // 切换后立即重新生成
-      regenerate();
+      // 不立即重新生成,等用户点"智能选号"
     });
   });
 
