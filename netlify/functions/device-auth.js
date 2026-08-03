@@ -1,8 +1,8 @@
 // netlify/functions/device-auth.js
-// 副链接设备绑定管理:5 台设备上限
-// - GET  /api/device-auth?token=xxx&device=yyy  查询设备是否在列表中(返回剩余额度)
-// - POST /api/device-auth   body: {token, deviceHash, action:'register'}  注册新设备
-// - DELETE /api/device-auth  body: {token, deviceHash}  移除设备
+// 副链接设备绑定管理:5 台设备上限 + firstSeen 时间记录
+// - GET    /api/device-auth?token=xxx[&device=yyy]  查询设备列表
+// - POST   /api/device-auth   body: {token, deviceHash, action:'register'}  注册
+// - DELETE /api/device-auth   body: {token, deviceHash}  移除单台(没 deviceHash 则清空整个 token)
 
 import { getStore } from '@netlify/blobs';
 
@@ -21,69 +21,77 @@ function jsonResponse(data, status = 200) {
   });
 }
 
-async function getDevices(token) {
-  if (!token) return [];
+function getStoreHandle() {
+  return getStore({ name: STORE_NAME, consistency: 'strong' });
+}
+
+// 读取设备数据(兼容旧版 array 格式)
+async function getDeviceData(token) {
+  if (!token) return { devices: [], firstSeen: {} };
   try {
-    // 显式传 store config - 用 netlify.toml 里的 siteID 推断
-    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    const store = getStoreHandle();
     const data = await store.get(token, { type: 'json' });
-    console.log('[getDevices]', token, '->', JSON.stringify(data));
-    return Array.isArray(data) ? data : [];
+    if (Array.isArray(data)) {
+      // 旧数据格式:直接是 array
+      return { devices: data, firstSeen: {} };
+    }
+    if (data && typeof data === 'object') {
+      return {
+        devices: Array.isArray(data.devices) ? data.devices : [],
+        firstSeen: (data.firstSeen && typeof data.firstSeen === 'object') ? data.firstSeen : {}
+      };
+    }
+    return { devices: [], firstSeen: {} };
   } catch (e) {
-    console.error('[getDevices] error:', e.message);
-    return [];
+    console.error('[getDeviceData] error:', e.message);
+    return { devices: [], firstSeen: {} };
   }
 }
 
-async function setDevices(token, devices) {
-  try {
-    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
-    await store.setJSON(token, devices);
-    console.log('[setDevices]', token, '<-', devices.length, 'devices');
-  } catch (e) {
-    console.error('[setDevices] error:', e.message);
-    throw e;
-  }
+async function setDeviceData(token, payload) {
+  const store = getStoreHandle();
+  await store.setJSON(token, payload);
+  console.log('[setDeviceData]', token, '<-', payload.devices.length, 'devices');
 }
 
 async function deleteAll(token) {
-  try {
-    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
-    await store.delete(token);
-  } catch (e) {
-    console.error('[deleteAll] error:', e.message);
-    throw e;
-  }
+  const store = getStoreHandle();
+  await store.delete(token);
 }
 
-export default async (req, context) => {
+export default async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('', { status: 204, headers: CORS_HEADERS });
   }
 
-  // 调试信息
-  console.log('[device-auth]', req.method, '| siteID:', context.site?.id, '| deployID:', context.deploy?.id);
-
   try {
     const url = new URL(req.url);
 
     if (req.method === 'GET') {
-      // 查询某 token 的设备列表 + 当前设备是否在列表中
       const token = url.searchParams.get('token');
       const device = url.searchParams.get('device') || '';
       if (!token) return jsonResponse({ error: 'missing token' }, 400);
 
-      const devices = await getDevices(token);
-      const isAllowed = device ? devices.includes(device) : false;
+      const data = await getDeviceData(token);
+      const isAllowed = device ? data.devices.includes(device) : false;
+
+      // 设备列表(带 firstSeen),用于管理界面
+      const deviceList = data.devices.map(h => ({
+        hash: h,
+        hashShort: h.substring(0, 12) + '...',
+        firstSeen: data.firstSeen[h] || 0,
+        isCurrent: h === device
+      })).sort((a, b) => a.firstSeen - b.firstSeen); // 按首次时间升序
+
       return jsonResponse({
         ok: true,
         token,
-        count: devices.length,
+        count: data.devices.length,
         max: MAX_DEVICES_PER_TOKEN,
-        full: devices.length >= MAX_DEVICES_PER_TOKEN,
+        full: data.devices.length >= MAX_DEVICES_PER_TOKEN,
         deviceAllowed: isAllowed,
-        devices: devices.map(d => d.substring(0, 12) + '...'), // 不返回完整 hash,保护隐私
+        devices: deviceList
       });
     }
 
@@ -95,42 +103,48 @@ export default async (req, context) => {
 
       if (action === 'register') {
         if (!deviceHash) return jsonResponse({ error: 'missing deviceHash' }, 400);
-        const devices = await getDevices(token);
-        // 已经在列表中,直接通过
-        if (devices.includes(deviceHash)) {
+        const data = await getDeviceData(token);
+        // 已经在列表中,直接通过(不更新 firstSeen)
+        if (data.devices.includes(deviceHash)) {
           return jsonResponse({
             ok: true,
             allowed: true,
             alreadyRegistered: true,
-            count: devices.length,
-            max: MAX_DEVICES_PER_TOKEN,
+            count: data.devices.length,
+            max: MAX_DEVICES_PER_TOKEN
           });
         }
         // 已满,拒绝
-        if (devices.length >= MAX_DEVICES_PER_TOKEN) {
+        if (data.devices.length >= MAX_DEVICES_PER_TOKEN) {
           return jsonResponse({
             ok: true,
             allowed: false,
             reason: 'device_limit_reached',
-            count: devices.length,
-            max: MAX_DEVICES_PER_TOKEN,
+            count: data.devices.length,
+            max: MAX_DEVICES_PER_TOKEN
           });
         }
-        // 添加
-        devices.push(deviceHash);
-        await setDevices(token, devices);
+        // 添加 + 记录首次时间
+        data.devices.push(deviceHash);
+        data.firstSeen[deviceHash] = Date.now();
+        await setDeviceData(token, data);
         return jsonResponse({
           ok: true,
           allowed: true,
           alreadyRegistered: false,
-          count: devices.length,
+          count: data.devices.length,
           max: MAX_DEVICES_PER_TOKEN,
+          firstSeen: data.firstSeen[deviceHash]
         });
       }
 
       if (action === 'list') {
-        const devices = await getDevices(token);
-        return jsonResponse({ ok: true, count: devices.length, max: MAX_DEVICES_PER_TOKEN });
+        const data = await getDeviceData(token);
+        return jsonResponse({
+          ok: true,
+          count: data.devices.length,
+          max: MAX_DEVICES_PER_TOKEN
+        });
       }
 
       return jsonResponse({ error: 'unknown action' }, 400);
@@ -146,12 +160,13 @@ export default async (req, context) => {
         return jsonResponse({ ok: true, deleted: 'all' });
       }
       // 删单个设备
-      const devices = await getDevices(token);
-      const idx = devices.indexOf(deviceHash);
+      const data = await getDeviceData(token);
+      const idx = data.devices.indexOf(deviceHash);
       if (idx === -1) return jsonResponse({ ok: true, found: false });
-      devices.splice(idx, 1);
-      await setDevices(token, devices);
-      return jsonResponse({ ok: true, found: true, count: devices.length });
+      data.devices.splice(idx, 1);
+      delete data.firstSeen[deviceHash];
+      await setDeviceData(token, data);
+      return jsonResponse({ ok: true, found: true, count: data.devices.length });
     }
 
     return jsonResponse({ error: 'method not allowed' }, 405);
@@ -160,4 +175,3 @@ export default async (req, context) => {
     return jsonResponse({ error: e.message || 'internal error' }, 500);
   }
 }
-

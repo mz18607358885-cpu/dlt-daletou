@@ -630,6 +630,161 @@
     }
   });
 
+  // ===== 设备管理(副链接绑定) =====
+  async function fetchDeviceList(token) {
+    const url = '/.netlify/functions/device-auth?token=' + encodeURIComponent(token);
+    const resp = await fetch(url);
+    return await resp.json();
+  }
+
+  async function removeDevice(token, deviceHash) {
+    const resp = await fetch('/.netlify/functions/device-auth', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, deviceHash })
+    });
+    return await resp.json();
+  }
+
+  async function clearAllDevices(token) {
+    const resp = await fetch('/.netlify/functions/device-auth', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    return await resp.json();
+  }
+
+  function formatDateTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async function renderDevices() {
+    const list = Favorites.all(); // 复用 shareLinks 存储(getMyShareLinks 等价)
+    // 实际上 shareLinks 直接 loadShareLinks() 获取更全
+    const allLinks = Security.getMyShareLinks();
+    const container = $('#devicesList');
+
+    if (!allLinks.length) {
+      container.innerHTML = '<div class="fav-empty">还没有副链接。先生成一个副链接(主页面点"生成分享副链接"),再回来这里管理设备。</div>';
+      return;
+    }
+
+    // 并发查询每个 token 的设备数
+    const summaries = await Promise.all(allLinks.map(async (link) => {
+      try {
+        const data = await fetchDeviceList(link.token);
+        return { link, data };
+      } catch (e) {
+        return { link, data: { ok: false, error: e.message, count: 0, max: 5, devices: [] } };
+      }
+    }));
+
+    container.innerHTML = summaries.map(({ link, data }) => {
+      const full = data.full || data.count >= data.max;
+      const statusClass = full ? 'is-full' : (data.count > 0 ? 'is-partial' : 'is-empty');
+      const statusText = full ? '已满' : (data.count > 0 ? `${data.count}/${data.max} 台` : '空');
+      const shortToken = link.token.substring(0, 8) + '...';
+      const createdAt = link.createdAt ? formatDateTime(link.createdAt) : '—';
+      return `
+        <div class="device-link-card glass-inner" data-token="${escapeHtml(link.token)}">
+          <div class="device-link-header">
+            <div class="device-link-info">
+              <code class="device-link-token">${shortToken}</code>
+              <span class="device-link-created">生成于 ${createdAt}</span>
+            </div>
+            <span class="device-link-status ${statusClass}">${statusText}</span>
+          </div>
+          <div class="device-list" data-token="${escapeHtml(link.token)}">
+            ${data.devices.length === 0 ? '<div class="device-empty">暂无设备绑定</div>' :
+              data.devices.map(d => `
+                <div class="device-row ${d.isCurrent ? 'is-current' : ''}" data-hash="${escapeHtml(d.hash)}">
+                  <code class="device-hash">${escapeHtml(d.hashShort)}</code>
+                  <span class="device-time">${formatDateTime(d.firstSeen)}</span>
+                  ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
+                  <button class="btn btn-sm btn-ghost device-remove" data-action="remove-device" data-token="${escapeHtml(link.token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
+                </div>
+              `).join('')
+            }
+          </div>
+          ${data.devices.length > 0 ? `
+            <div class="device-link-actions">
+              <button class="btn btn-sm btn-ghost" data-action="clear-devices" data-token="${escapeHtml(link.token)}">清空该链接所有设备</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  $('#btnToggleDevices').addEventListener('click', async () => {
+    const panel = $('#devicesPanel');
+    if (panel.hidden) {
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 显示加载状态
+      $('#devicesList').innerHTML = '<div class="fav-empty">加载中...</div>';
+      try {
+        await renderDevices();
+      } catch (e) {
+        $('#devicesList').innerHTML = `<div class="fav-empty">加载失败: ${escapeHtml(e.message)}</div>`;
+      }
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  // 设备管理事件委托
+  $('#devicesList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const token = btn.dataset.token;
+    if (!token) return;
+
+    if (action === 'remove-device') {
+      const deviceHash = btn.dataset.hash;
+      if (!deviceHash) return;
+      if (!confirm('确认移除这台设备?该设备将无法再使用此副链接。')) return;
+      btn.disabled = true;
+      btn.textContent = '移除中...';
+      try {
+        const res = await removeDevice(token, deviceHash);
+        if (res.ok) {
+          showCopyToast('设备已移除');
+          await renderDevices();
+        } else {
+          showCopyToast('移除失败: ' + (res.error || '未知错误'));
+          btn.disabled = false;
+          btn.textContent = '移除';
+        }
+      } catch (err) {
+        showCopyToast('网络错误');
+        btn.disabled = false;
+        btn.textContent = '移除';
+      }
+    } else if (action === 'clear-devices') {
+      if (!confirm('确认清空该副链接的所有设备?所有已绑设备都将无法再使用此副链接。')) return;
+      btn.disabled = true;
+      try {
+        const res = await clearAllDevices(token);
+        if (res.ok) {
+          showCopyToast('已清空该链接所有设备');
+          await renderDevices();
+        } else {
+          showCopyToast('清空失败: ' + (res.error || '未知错误'));
+        }
+      } catch (err) {
+        showCopyToast('网络错误');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  });
+
   // ===== 操作按钮 =====
   $('#btnRegenerate').addEventListener('click', () => {
     renderGroups(Selector.generate(5));

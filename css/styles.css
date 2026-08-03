@@ -634,3 +634,82 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ===== 设备管理面板 ===== */
+.devices-panel { margin: 0 auto 24px; padding: 20px 24px; border-radius: 16px; position: relative; z-index: 5; }
+.devices-panel-hint { font-size: 12px; color: var(--text-muted); }
+.glass-inner {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.device-link-card { transition: border-color .15s; }
+.device-link-card:hover { border-color: rgba(255, 255, 255, 0.18); }
+.device-link-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.device-link-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.device-link-token {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+.device-link-created { font-size: 11px; color: var(--text-muted); }
+.device-link-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.device-link-status.is-empty { background: rgba(150, 150, 150, 0.15); color: rgba(255, 255, 255, 0.6); }
+.device-link-status.is-partial { background: rgba(80, 180, 255, 0.18); color: rgb(120, 200, 255); }
+.device-link-status.is-full { background: rgba(255, 80, 80, 0.2); color: rgb(255, 130, 130); }
+
+.device-list { padding: 6px 0; }
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.device-row:first-child { border-top: none; }
+.device-row.is-current { background: rgba(80, 180, 255, 0.08); border-radius: 6px; padding: 8px 10px; margin: 0 -10px; }
+.device-hash {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.device-time { font-size: 11px; color: var(--text-muted); margin-right: auto; }
+.device-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(80, 200, 120, 0.2);
+  color: rgb(120, 220, 150);
+}
+.device-remove { font-size: 11px; padding: 4px 10px; }
+.device-empty { font-size: 12px; color: var(--text-muted); padding: 6px 0; }
+.device-link-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  text-align: right;
+}
