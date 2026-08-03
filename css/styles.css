@@ -718,3 +718,35 @@ body {
   padding: 4px 10px;
   margin-left: 8px;
 }
+
+/* 查询任意副链接 */
+.device-search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(80, 180, 255, 0.06);
+  border: 1px solid rgba(80, 180, 255, 0.18);
+  border-radius: 10px;
+}
+.device-search-box input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  outline: none;
+}
+.device-search-box input:focus {
+  border-color: rgba(80, 180, 255, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+}
+.device-search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+#deviceSearchResult { margin-bottom: 16px; }
+#deviceSearchResult .fav-empty { padding: 20px; }

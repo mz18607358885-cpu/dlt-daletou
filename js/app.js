@@ -737,6 +737,13 @@
     if (panel.hidden) {
       panel.hidden = false;
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 副链接模式:隐藏查询框(自己就是查询结果)
+      if (state.isShareMode) {
+        $('#deviceSearchBox').style.display = 'none';
+      } else {
+        $('#deviceSearchBox').style.display = 'flex';
+        $('#deviceSearchResult').innerHTML = '';
+      }
       $('#devicesList').innerHTML = '<div class="fav-empty">加载中...</div>';
       try {
         // 副链接模式:只显示当前 token;主链接模式:全部
@@ -748,6 +755,75 @@
     } else {
       panel.hidden = true;
     }
+  });
+
+  // ===== 查询任意副链接设备(主链接模式) =====
+  function renderDeviceSearchResult(data, token) {
+    const container = $('#deviceSearchResult');
+    if (!data.ok) {
+      container.innerHTML = `<div class="fav-empty">查询失败: ${escapeHtml(data.error || '未知错误')}</div>`;
+      return;
+    }
+    const full = data.full || data.count >= data.max;
+    const statusClass = full ? 'is-full' : (data.count > 0 ? 'is-partial' : 'is-empty');
+    const statusText = full ? '已满' : (data.count > 0 ? `${data.count}/${data.max} 台` : '空');
+    const shortToken = token.length > 14 ? token.substring(0, 14) + '...' : token;
+    container.innerHTML = `
+      <div class="device-link-card glass-inner">
+        <div class="device-link-header">
+          <div class="device-link-info">
+            <code class="device-link-token">${escapeHtml(shortToken)}</code>
+            <span class="device-link-created">查询结果</span>
+          </div>
+          <span class="device-link-status ${statusClass}">${statusText}</span>
+          <button class="btn btn-sm btn-ghost" id="deviceSearchBack">返回列表</button>
+        </div>
+        <div class="device-list">
+          ${data.devices.length === 0 ? '<div class="device-empty">该副链接暂无设备绑定</div>' :
+            data.devices.map(d => `
+              <div class="device-row">
+                <code class="device-hash">${escapeHtml(d.hashShort)}</code>
+                <span class="device-time">${formatDateTime(d.firstSeen)}</span>
+                ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
+              </div>
+            `).join('')
+          }
+        </div>
+      </div>
+    `;
+    $('#deviceSearchBack').addEventListener('click', () => {
+      container.innerHTML = '';
+      $('#deviceSearchInput').value = '';
+    });
+  }
+
+  $('#deviceSearchBtn').addEventListener('click', async () => {
+    const token = $('#deviceSearchInput').value.trim();
+    if (!token) {
+      showCopyToast('请输入 token');
+      return;
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(token)) {
+      showCopyToast('token 格式不对,应该是 UUID 格式');
+      return;
+    }
+    const btn = $('#deviceSearchBtn');
+    btn.disabled = true;
+    btn.textContent = '查询中...';
+    try {
+      const data = await fetchDeviceList(token);
+      renderDeviceSearchResult(data, token);
+    } catch (e) {
+      renderDeviceSearchResult({ ok: false, error: e.message }, token);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 查询';
+    }
+  });
+
+  // 回车触发查询
+  $('#deviceSearchInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') $('#deviceSearchBtn').click();
   });
 
   // 设备管理事件委托

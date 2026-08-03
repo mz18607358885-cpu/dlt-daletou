@@ -115,7 +115,15 @@
         <h2>📱 设备管理</h2>
         <span class="devices-panel-hint">查看副链接绑定的设备,最多 5 台/链接</span>
       </div>
-      <div id="devicesList"><!-- JS 动态渲染 --></div>
+
+      <!-- 查询任意副链接(主链接模式) -->
+      <div class="device-search-box" id="deviceSearchBox">
+        <input type="text" id="deviceSearchInput" placeholder="输入副链接 token(完整 UUID)查询设备绑定情况" autocomplete="off" />
+        <button class="btn btn-primary btn-sm" id="deviceSearchBtn">🔍 查询</button>
+      </div>
+      <div id="deviceSearchResult"><!-- 查询结果 --></div>
+
+      <div id="devicesList"><!-- 自己的副链接列表 --></div>
     </section>
 
     <!-- 冷热统计区(可折叠) -->
