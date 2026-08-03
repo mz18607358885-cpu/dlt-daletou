@@ -797,14 +797,25 @@
     });
   }
 
-  $('#deviceSearchBtn').addEventListener('click', async () => {
-    const token = $('#deviceSearchInput').value.trim();
-    if (!token) {
-      showCopyToast('请输入 token');
-      return;
+  // 从用户输入中提取 token(支持完整 URL、#share=xxx、纯 UUID 三种形式)
+  function extractTokenFromInput(input) {
+    const s = String(input || '').trim();
+    if (!s) return null;
+    // 1. 纯 UUID
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+      return s;
     }
-    if (!/^[0-9a-f-]{36}$/i.test(token)) {
-      showCopyToast('token 格式不对,应该是 UUID 格式');
+    // 2. 完整 URL 或片段中包含 share=xxx
+    const m = s.match(/[#?&]share=([0-9a-f-]{36})/i);
+    if (m) return m[1];
+    return null;
+  }
+
+  $('#deviceSearchBtn').addEventListener('click', async () => {
+    const raw = $('#deviceSearchInput').value;
+    const token = extractTokenFromInput(raw);
+    if (!token) {
+      showCopyToast('格式不对,粘贴完整副链接(例:#share=xxx 或 https://.../#share=xxx)');
       return;
     }
     const btn = $('#deviceSearchBtn');
