@@ -232,30 +232,9 @@
   }
 
   // ===== Device fingerprint =====
-  function getCanvasFingerprint() {
-    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-      return '';
-    }
-    try {
-      const c = document.createElement('canvas');
-      if (!c.getContext) return '';
-      const ctx = c.getContext('2d');
-      if (!ctx) return '';
-      c.width = 240;
-      c.height = 60;
-      ctx.textBaseline = 'top';
-      ctx.font = "14px 'Arial'";
-      ctx.fillStyle = '#f60';
-      ctx.fillRect(125, 1, 62, 20);
-      ctx.fillStyle = '#069';
-      ctx.fillText('大乐透智能选号#', 2, 15);
-      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-      ctx.fillText('大乐透智能选号#', 4, 17);
-      return c.toDataURL();
-    } catch (_) {
-      return '';
-    }
-  }
+  // 注意:不再使用 canvas.toDataURL() 做指纹(会触发部分浏览器的
+  // 隐私/fingerprinting 警告,iOS Safari、Brave、Firefox 隐私模式会拦截)
+  // 改用 navigator/screen/timezone/language 等基础特征做组合指纹
 
   function getDeviceFingerprint() {
     const nav = (typeof navigator !== 'undefined') ? navigator : {};
@@ -270,8 +249,10 @@
       tz,
       String(nav.hardwareConcurrency || 0),
       nav.language || '',
-      getCanvasFingerprint(),
-      nav.platform || ''
+      nav.platform || '',
+      (nav.languages || []).join(','),
+      String(scr.pixelDepth || 0),
+      String(nav.maxTouchPoints || 0)
     ];
     return parts.join('|');
   }
