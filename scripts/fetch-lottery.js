@@ -38,24 +38,33 @@ function fetchFromApi() {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-CN,zh;q=0.9',
+        // 关键:接受 gzip 压缩,否则 Node 默认不接收,服务器强制返回 403 代替
+        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://www.sporttery.cn/',
         'Origin': 'https://www.sporttery.cn',
       },
       timeout: 15000,
     }, (res) => {
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (c) => body += c);
-      res.on('end', () => {
+      const zlib = require('zlib');
+      const encoding = (res.headers['content-encoding'] || '').toLowerCase();
+      const stream = encoding === 'gzip' ? res.pipe(zlib.createGunzip())
+                  : encoding === 'br' ? res.pipe(zlib.createBrotliDecompress())
+                  : encoding === 'deflate' ? res.pipe(zlib.createInflate())
+                  : res;
+      const chunks = [];
+      stream.on('data', (c) => chunks.push(c));
+      stream.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
         if (res.statusCode !== 200) {
-          return reject(new Error(`HTTP ${res.statusCode}`));
+          return reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 200)}`));
         }
         try {
           resolve(JSON.parse(body));
         } catch (e) {
-          reject(new Error('JSON parse failed: ' + e.message));
+          reject(new Error('JSON parse failed: ' + e.message + ' | body前200: ' + body.substring(0, 200)));
         }
       });
+      stream.on('error', reject);
     });
     req.on('error', reject);
     req.on('timeout', () => req.destroy(new Error('timeout')));
