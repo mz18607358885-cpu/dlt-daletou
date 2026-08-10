@@ -380,6 +380,12 @@
     state.groups = groups;
     const container = $('#groupsContainer');
     container.innerHTML = groups.map((g, i) => groupCardHtml(g, i)).join('');
+    // 启用"一键复制全部"按钮
+    const btnCopyAll = $('#btnCopyAll');
+    if (btnCopyAll) {
+      btnCopyAll.disabled = false;
+      btnCopyAll.title = `一键复制 ${groups.length} 组号码`;
+    }
   }
 
   function groupCardHtml(g, i) {
@@ -1018,6 +1024,23 @@
 
   $('#btnRegenerate').addEventListener('click', () => {
     regenerate();
+  });
+
+  // 一键复制全部号码
+  $('#btnCopyAll').addEventListener('click', () => {
+    if (!state.groups || !state.groups.length) {
+      showCopyToast('请先点智能选号');
+      return;
+    }
+    // 格式:每行一组,前 5 + 后 2
+    const text = state.groups.map(g => formatGroupForCopy(g)).join('\n');
+    copyText(text).then(ok => {
+      if (ok) {
+        showCopyToast(`✓ 已复制 ${state.groups.length} 组号码(每行一组)`);
+      } else {
+        showCopyToast('复制失败,请手动选择');
+      }
+    });
   });
 
   // 选组数切换(只更新状态,不立即生成号码,需要点智能选号才生成)
