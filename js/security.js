@@ -88,6 +88,27 @@
 
   const storage = makeStorage();
 
+  // ===== Cookie 备份(给 localStorage 多一重保险) =====
+  // localStorage 容易被清(隐身模式、手机浏览器自动清缓存、用户清缓存)
+  // Cookie 可以设 1 年有效期,持久性更好
+  const COOKIE_NAME = 'dlt_auth';
+  const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 年
+
+  function setCookie(name, value, maxAge) {
+    document.cookie = name + '=' + encodeURIComponent(value) +
+      '; max-age=' + maxAge +
+      '; path=/; SameSite=Lax';
+  }
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  function delCookie(name) {
+    document.cookie = name + '=; max-age=0; path=/';
+  }
+
   // ===== Hashing (sync via node:crypto, pure-JS fallback for browser) =====
   // 纯 JS SHA-256 实现,基于 RFC 6234 标准实现,用于浏览器 fallback
   function sha256PureJs(message) {
@@ -269,9 +290,14 @@
 
   function isUnlocked(type) {
     type = type || 'main';
-    const stored = storage.get(lockStorageKey(type));
-    if (!stored) return false;
     const expected = type === 'share' ? SHARE_PASSWORD_HASH : MAIN_PASSWORD_HASH;
+    // 1. 先看 localStorage
+    let stored = storage.get(lockStorageKey(type));
+    // 2. localStorage 没有,看 cookie(双保险)
+    if (!stored) {
+      stored = getCookie(COOKIE_NAME);
+    }
+    if (!stored) return false;
     if (stored !== expected) return false;
     if (getLockoutRemainingMs(type) > 0) return false;
     return true;
@@ -285,10 +311,12 @@
     const inputHash = sha256Hex(String(password == null ? '' : password));
     const expected = type === 'share' ? SHARE_PASSWORD_HASH : MAIN_PASSWORD_HASH;
     if (inputHash === expected) {
-      // 成功
+      // 成功 - 双保险存储
       storage.set(lockStorageKey(type), expected);
       storage.set(failStorageKey(type), '0');
       storage.del(lockStartKey(type));
+      // 同时写 cookie(1 年有效期,即使清 localStorage 也能解锁)
+      setCookie(COOKIE_NAME, expected, COOKIE_MAX_AGE);
       return true;
     }
     // 失败
