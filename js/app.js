@@ -784,8 +784,16 @@
   // ===== 查询任意副链接设备(主链接模式) =====
   function renderDeviceSearchResult(data, token) {
     const container = $('#deviceSearchResult');
+    // 关键:查询时清空自己的副链接列表,只显示查询结果
+    $('#devicesList').innerHTML = '';
+
     if (!data.ok) {
       container.innerHTML = `<div class="fav-empty">查询失败: ${escapeHtml(data.error || '未知错误')}</div>`;
+      // "返回列表"按钮单独显示
+      container.innerHTML += `<div style="text-align:center; margin-top:12px;">
+        <button class="btn btn-sm btn-primary" id="deviceSearchBack">← 返回我的副链接列表</button>
+      </div>`;
+      $('#deviceSearchBack').addEventListener('click', backToMyList);
       return;
     }
     const full = data.full || data.count >= data.max;
@@ -800,7 +808,6 @@
             <span class="device-link-created">查询结果</span>
           </div>
           <span class="device-link-status ${statusClass}">${statusText}</span>
-          <button class="btn btn-sm btn-ghost" id="deviceSearchBack">返回列表</button>
         </div>
         <div class="device-list">
           ${data.devices.length === 0 ? '<div class="device-empty">该副链接暂无设备绑定</div>' :
@@ -813,12 +820,25 @@
             `).join('')
           }
         </div>
+        <div class="device-link-actions">
+          <button class="btn btn-sm btn-primary" id="deviceSearchBack">← 返回我的副链接列表</button>
+        </div>
       </div>
     `;
-    $('#deviceSearchBack').addEventListener('click', () => {
-      container.innerHTML = '';
-      $('#deviceSearchInput').value = '';
-    });
+    $('#deviceSearchBack').addEventListener('click', backToMyList);
+  }
+
+  // 返回我的副链接列表
+  async function backToMyList() {
+    $('#deviceSearchResult').innerHTML = '';
+    $('#deviceSearchInput').value = '';
+    $('#devicesList').innerHTML = '<div class="fav-empty">加载中...</div>';
+    try {
+      const filterToken = state.isShareMode ? state.shareToken : null;
+      await renderDevices(filterToken);
+    } catch (e) {
+      $('#devicesList').innerHTML = `<div class="fav-empty">加载失败: ${escapeHtml(e.message)}</div>`;
+    }
   }
 
   // 从用户输入中提取 token(支持完整 URL、#share=xxx、纯 UUID 三种形式)
