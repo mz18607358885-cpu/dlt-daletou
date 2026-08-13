@@ -951,13 +951,29 @@
   });
 
   // 设备管理事件委托
+  // 设备管理 click 监听器 - 监听 devicesList 容器(自己副链接列表)
   $('#devicesList').addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
     const token = btn.dataset.token;
     if (!token) return;
+    await handleDeviceAction(action, token, btn);
+  });
 
+  // 设备管理 click 监听器 - 监听 deviceSearchResult 容器(查询结果)
+  // 必须单独加,因为 deviceSearchResult 不在 devicesList 里,事件不冒泡
+  $('#deviceSearchResult').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const token = btn.dataset.token;
+    if (!token) return;
+    await handleDeviceAction(action, token, btn);
+  });
+
+  // 设备操作统一处理(自己列表 + 查询结果都用这个)
+  async function handleDeviceAction(action, token, btn) {
     if (action === 'toggle-detail') {
       // 展开/收起某个副链接的设备详情
       const card = btn.closest('.device-link-card');
@@ -971,7 +987,7 @@
       return;
     }
 
-    if (action === 'remove-device') {
+    if (action === 'remove-device' || action === 'remove-searched-device') {
       const deviceHash = btn.dataset.hash;
       if (!deviceHash) return;
       if (!confirm('确认移除这台设备?该设备将无法再使用此副链接。')) return;
@@ -981,7 +997,13 @@
         const res = await removeDevice(token, deviceHash);
         if (res.ok) {
           showCopyToast('设备已移除');
-          await renderDevices();
+          // 重新渲染对应区域
+          if (action === 'remove-searched-device') {
+            const data = await fetchDeviceList(token);
+            renderDeviceSearchResult(data, token);
+          } else {
+            await renderDevices();
+          }
         } else {
           showCopyToast('移除失败: ' + (res.error || '未知错误'));
           btn.disabled = false;
@@ -1008,44 +1030,17 @@
       } finally {
         btn.disabled = false;
       }
-    } else if (action === 'remove-searched-device') {
-      // 查询结果中删除单台设备
-      const deviceHash = btn.dataset.hash;
-      if (!confirm('确认移除这台设备?该设备将无法再使用此副链接。')) return;
-      btn.disabled = true;
-      btn.textContent = '移除中...';
-      try {
-        const res = await removeDevice(token, deviceHash);
-        if (res.ok) {
-          showCopyToast('设备已移除');
-          // 重新查询显示最新结果
-          const data = await fetchDeviceList(token);
-          renderDeviceSearchResult(data, token);
-        } else {
-          showCopyToast('移除失败: ' + (res.error || '未知错误'));
-          btn.disabled = false;
-          btn.textContent = '移除';
-        }
-      } catch (err) {
-        showCopyToast('网络错误');
-        btn.disabled = false;
-        btn.textContent = '移除';
-      }
     } else if (action === 'delete-searched-link') {
-      // 删除整个副链接(危险操作)
       if (!confirm('⚠️ 危险操作!\n\n确认删除整个副链接?\n• 所有已绑设备(最多 5 台)将全部失效\n• 副链接彻底作废,无法恢复\n• 之前用这个链接的朋友/自己都打不开\n\n确认要删吗?')) return;
       btn.disabled = true;
       btn.textContent = '删除中...';
       try {
         const res = await clearAllDevices(token);
         if (res.ok) {
-          // 同时从用户 localStorage 的 shareLinks 删除
           Security.revokeAllShareLinks();
           showCopyToast('✓ 副链接已彻底删除');
-          // 清空搜索结果
           $('#deviceSearchResult').innerHTML = '';
           $('#deviceSearchInput').value = '';
-          // 返回自己列表
           backToMyList();
         } else {
           showCopyToast('删除失败: ' + (res.error || '未知错误'));
@@ -1058,7 +1053,7 @@
         btn.textContent = '🗑 删除整个链接';
       }
     }
-  });
+  }
 
   // ===== 操作按钮 =====
   // 当前选号数量(默认 3 组)
