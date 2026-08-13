@@ -1257,13 +1257,18 @@
   function showShareModeInvalid(reason, extra) {
     document.querySelector('.main')?.remove();
     const isDeviceLimit = reason === 'device_limit_reached';
-    const title = isDeviceLimit ? '设备数已满' : '链接无效';
-    const icon = isDeviceLimit ? '🚫' : '🔒';
-    let desc = '';
+    const isLinkDeleted = reason === 'link_deleted';
+    let title = '链接无效';
+    let icon = '🔒';
+    let desc = '此副链接无法访问。<br/>' + (reason ? '原因: ' + escapeHtml(reason) : '');
     if (isDeviceLimit) {
+      title = '设备数已满';
+      icon = '🚫';
       desc = `此副链接已绑定 <strong>${extra?.count ?? 5}</strong> 台设备(上限 ${extra?.max ?? 5} 台),<br/>无法在新设备上打开。<br/><br/>请联系分享者:<br/>• 在已绑定的设备上撤销一台,或<br/>• 重新生成新的副链接`;
-    } else {
-      desc = '此副链接无法访问。<br/>' + (reason ? '原因: ' + escapeHtml(reason) : '');
+    } else if (isLinkDeleted) {
+      title = '链接已删除';
+      icon = '🗑️';
+      desc = `此副链接<strong>已被分享者彻底删除</strong>。<br/>无法打开,无法恢复。<br/><br/>请联系分享者重新生成新的副链接。`;
     }
     document.body.innerHTML = `
       <div class="bg-orbs">
