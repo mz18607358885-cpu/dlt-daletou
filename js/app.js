@@ -822,12 +822,14 @@
                 <code class="device-hash">${escapeHtml(d.hashShort)}</code>
                 <span class="device-time">${formatDateTime(d.firstSeen)}</span>
                 ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
+                <button class="btn btn-sm btn-ghost device-remove-btn" data-action="remove-searched-device" data-token="${escapeHtml(token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
               </div>
             `).join('')
           }
         </div>
         <div class="device-link-actions">
           <button class="btn btn-sm btn-primary" id="deviceSearchBack">← 返回我的副链接列表</button>
+          <button class="btn btn-sm btn-danger" data-action="delete-searched-link" data-token="${escapeHtml(token)}" title="删除整个副链接,所有设备都失效">🗑 删除整个链接</button>
         </div>
       </div>
     `;
@@ -1005,6 +1007,55 @@
         showCopyToast('网络错误');
       } finally {
         btn.disabled = false;
+      }
+    } else if (action === 'remove-searched-device') {
+      // 查询结果中删除单台设备
+      const deviceHash = btn.dataset.hash;
+      if (!confirm('确认移除这台设备?该设备将无法再使用此副链接。')) return;
+      btn.disabled = true;
+      btn.textContent = '移除中...';
+      try {
+        const res = await removeDevice(token, deviceHash);
+        if (res.ok) {
+          showCopyToast('设备已移除');
+          // 重新查询显示最新结果
+          const data = await fetchDeviceList(token);
+          renderDeviceSearchResult(data, token);
+        } else {
+          showCopyToast('移除失败: ' + (res.error || '未知错误'));
+          btn.disabled = false;
+          btn.textContent = '移除';
+        }
+      } catch (err) {
+        showCopyToast('网络错误');
+        btn.disabled = false;
+        btn.textContent = '移除';
+      }
+    } else if (action === 'delete-searched-link') {
+      // 删除整个副链接(危险操作)
+      if (!confirm('⚠️ 危险操作!\n\n确认删除整个副链接?\n• 所有已绑设备(最多 5 台)将全部失效\n• 副链接彻底作废,无法恢复\n• 之前用这个链接的朋友/自己都打不开\n\n确认要删吗?')) return;
+      btn.disabled = true;
+      btn.textContent = '删除中...';
+      try {
+        const res = await clearAllDevices(token);
+        if (res.ok) {
+          // 同时从用户 localStorage 的 shareLinks 删除
+          Security.revokeAllShareLinks();
+          showCopyToast('✓ 副链接已彻底删除');
+          // 清空搜索结果
+          $('#deviceSearchResult').innerHTML = '';
+          $('#deviceSearchInput').value = '';
+          // 返回自己列表
+          backToMyList();
+        } else {
+          showCopyToast('删除失败: ' + (res.error || '未知错误'));
+          btn.disabled = false;
+          btn.textContent = '🗑 删除整个链接';
+        }
+      } catch (err) {
+        showCopyToast('网络错误');
+        btn.disabled = false;
+        btn.textContent = '🗑 删除整个链接';
       }
     }
   });
