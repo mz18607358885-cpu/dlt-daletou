@@ -1,0 +1,48 @@
+{
+  "name": "大乐透智能选号",
+  "short_name": "大乐透选号",
+  "description": "智能选号 · 历史开奖 · 副链接分享",
+  "start_url": "./",
+  "scope": "./",
+  "id": "/dlt-app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1a",
+  "theme_color": "#ef4444",
+  "lang": "zh-CN",
+  "categories": ["utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "智能选号",
+      "short_name": "选号",
+      "description": "快速生成号码",
+      "url": "./?action=pick"
+    },
+    {
+      "name": "历史开奖",
+      "short_name": "历史",
+      "description": "查看今年开奖记录",
+      "url": "./?action=history"
+    }
+  ]
+}

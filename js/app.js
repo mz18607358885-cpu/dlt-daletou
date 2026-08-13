@@ -72,6 +72,19 @@
   // ===== 入口 =====
   document.addEventListener('DOMContentLoaded', init);
 
+  // ===== 注册 PWA Service Worker =====
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          console.log('[PWA] Service Worker registered, scope:', reg.scope);
+        })
+        .catch(err => {
+          console.warn('[PWA] SW registration failed:', err);
+        });
+    });
+  }
+
   async function init() {
     setText('drawPeriod', '加载中…');
     setText('drawDate', '');
