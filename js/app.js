@@ -148,7 +148,7 @@
     }
 
     // 3. 正常模式:检查主密码解锁
-    if (Security.isUnlocked('main')) {
+    if (await Security.isUnlocked('main')) {
       unlockUI();
       renderGroups(Selector.generate(5));
       renderStats();

@@ -91,8 +91,63 @@
   // ===== Cookie 备份(给 localStorage 多一重保险) =====
   // localStorage 容易被清(隐身模式、手机浏览器自动清缓存、用户清缓存)
   // Cookie 可以设 1 年有效期,持久性更好
-  const COOKIE_NAME = 'dlt_auth';
+  // 主链接和副链接分开存(避免互相覆盖)
+  const COOKIE_NAME_PREFIX = 'dlt_auth_';
   const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 年
+
+  function getCookieName(type) {
+    return COOKIE_NAME_PREFIX + (type === 'share' ? 'share' : 'main');
+  }
+
+  // ===== IndexedDB 第三层备份(最持久) =====
+  // 浏览器自带数据库,用户清缓存也不一定会清 IDB
+  // 跨浏览器会话,跨隐身/正常模式(部分浏览器)
+  const IDB_NAME = 'dlt-auth-db';
+  const IDB_STORE = 'auth';
+  const IDB_VERSION = 1;
+
+  function openIdb() {
+    return new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') return resolve(null);
+      const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = () => resolve(null);
+    });
+  }
+
+  async function idbGet(type) {
+    const db = await openIdb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const store = tx.objectStore(IDB_STORE);
+        const req = store.get(getCookieName(type));
+        req.onsuccess = (e) => resolve(e.target.result || null);
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  async function idbSet(type, value) {
+    const db = await openIdb();
+    if (!db) return;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.put(value, getCookieName(type));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch (_) { resolve(); }
+    });
+  }
 
   function setCookie(name, value, maxAge) {
     document.cookie = name + '=' + encodeURIComponent(value) +
@@ -288,14 +343,18 @@
   const failStorageKey = (type) => type === 'share' ? 'dlt:shareFailCount' : STORAGE_KEYS.AUTH_FAIL_COUNT;
   const lockStartKey = (type) => type === 'share' ? 'dlt:shareLockStart' : STORAGE_KEYS.AUTH_LOCK_START;
 
-  function isUnlocked(type) {
+  async function isUnlocked(type) {
     type = type || 'main';
     const expected = type === 'share' ? SHARE_PASSWORD_HASH : MAIN_PASSWORD_HASH;
     // 1. 先看 localStorage
     let stored = storage.get(lockStorageKey(type));
-    // 2. localStorage 没有,看 cookie(双保险)
+    // 2. localStorage 没有,看 cookie(双保险,按 type 分开)
     if (!stored) {
-      stored = getCookie(COOKIE_NAME);
+      stored = getCookie(getCookieName(type));
+    }
+    // 3. 还没有,看 IndexedDB(第三层,最持久)
+    if (!stored) {
+      stored = await idbGet(type);
     }
     if (!stored) return false;
     if (stored !== expected) return false;
@@ -311,12 +370,14 @@
     const inputHash = sha256Hex(String(password == null ? '' : password));
     const expected = type === 'share' ? SHARE_PASSWORD_HASH : MAIN_PASSWORD_HASH;
     if (inputHash === expected) {
-      // 成功 - 双保险存储
+      // 成功 - 三层保险存储
       storage.set(lockStorageKey(type), expected);
       storage.set(failStorageKey(type), '0');
       storage.del(lockStartKey(type));
-      // 同时写 cookie(1 年有效期,即使清 localStorage 也能解锁)
-      setCookie(COOKIE_NAME, expected, COOKIE_MAX_AGE);
+      // 同时写 cookie(1 年有效期,即使清 localStorage 也能解锁),按 type 分开存
+      setCookie(getCookieName(type), expected, COOKIE_MAX_AGE);
+      // 第三层:IndexedDB(最持久,清缓存都不一定清)
+      idbSet(type, expected);
       return true;
     }
     // 失败
@@ -330,9 +391,12 @@
     return false;
   }
 
-  function lock() {
-    // 仅清除已认证标记,保留失败计数(避免用户绕开锁定)
-    storage.del(STORAGE_KEYS.AUTH_HASH);
+  function lock(type) {
+    // 清除已认证标记(主链接或副链接),保留失败计数(避免用户绕开锁定)
+    type = type || 'main';
+    storage.del(lockStorageKey(type));
+    // 同时清 cookie
+    delCookie(getCookieName(type));
   }
 
   function getLockoutRemainingMs(type) {
