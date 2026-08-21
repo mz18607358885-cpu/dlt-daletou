@@ -313,6 +313,21 @@
     window = window || 30;
     const draws = recentDraws(window);
 
+    // 阈值按期数自适应:
+    //   30 期  → 热 ≥6 / 温 3-5 / 冷 ≤2
+    //   50 期  → 热 ≥9 / 温 4-8 / 冷 ≤3
+    //   100 期 → 热 ≥16 / 温 8-15 / 冷 ≤7
+    const thresholds = window >= 100
+      ? { hot: 16, warmMin: 8 }
+      : window >= 50
+        ? { hot: 9, warmMin: 4 }
+        : { hot: 6, warmMin: 3 };
+    const labelBy = (c) => {
+      if (c >= thresholds.hot) return '热';
+      if (c >= thresholds.warmMin) return '温';
+      return '冷';
+    };
+
     const front = [];
     for (let n = 1; n <= 35; n++) {
       const s = statInZone(draws, n, '前区');
@@ -321,7 +336,7 @@
         count: s.count,
         maxMiss: s.maxMiss,
         currentMiss: s.currentMiss,
-        label: labelByCount(s.count),
+        label: labelBy(s.count),
       });
     }
     const back = [];
@@ -332,7 +347,7 @@
         count: s.count,
         maxMiss: s.maxMiss,
         currentMiss: s.currentMiss,
-        label: labelByCount(s.count),
+        label: labelBy(s.count),
       });
     }
     return {
