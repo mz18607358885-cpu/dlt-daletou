@@ -166,11 +166,18 @@
 
     <!-- 冷热统计区(可折叠) -->
     <section class="stats-panel glass" id="statsPanel" hidden>
-      <h2>冷热统计 · 近 30 期</h2>
+      <div class="stats-header">
+        <h2>冷热统计 · 近 <span id="statsPeriodLabel">30</span> 期</h2>
+        <div class="stats-period-switch" id="statsPeriodSwitch">
+          <button type="button" class="period-btn active" data-period="30">30 期</button>
+          <button type="button" class="period-btn" data-period="50">50 期</button>
+          <button type="button" class="period-btn" data-period="100">100 期</button>
+        </div>
+      </div>
       <div class="stats-legend">
-        <div class="legend-item"><span class="legend-dot hot"></span>热号 (≥6次)</div>
-        <div class="legend-item"><span class="legend-dot warm"></span>温号 (3-5次)</div>
-        <div class="legend-item"><span class="legend-dot cold"></span>冷号 (≤2次)</div>
+        <div class="legend-item"><span class="legend-dot hot"></span>热号</div>
+        <div class="legend-item"><span class="legend-dot warm"></span>温号</div>
+        <div class="legend-item"><span class="legend-dot cold"></span>冷号</div>
       </div>
       <div class="stats-section">
         <h3>前区 (1-35) · 出现频次</h3>
