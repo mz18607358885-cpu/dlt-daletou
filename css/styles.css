@@ -379,6 +379,42 @@ body {
 .stats-panel h3 { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
 .stats-section { margin-bottom: 20px; }
 
+/* 标题 + 期数切换 同行 */
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.stats-header h2 { margin-bottom: 0; }
+.stats-period-switch {
+  display: inline-flex;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.period-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.period-btn:hover { color: #fff; }
+.period-btn.active {
+  background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
 /* 冷热图例 */
 .stats-legend {
   display: flex;
