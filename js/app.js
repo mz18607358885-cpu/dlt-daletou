@@ -1240,15 +1240,15 @@
     const backContainer = $('#backBalls');
 
     frontContainer.innerHTML = all.前区.map(item => {
-      const gradient = item.label === '热' ? 'var(--hot-color)' : item.label === '温' ? 'var(--warm-color)' : 'var(--cold-color)';
+      const cls = item.label === '热' ? 'hot' : item.label === '温' ? 'warm' : 'cold';
       const title = `号 ${item.num} · ${item.label} · 出现 ${item.count} 次 · 当前遗漏 ${item.currentMiss} · 最大遗漏 ${item.maxMiss}`;
-      return `<div class="stat-ball" style="background: ${gradient};" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
+      return `<div class="stat-ball ${cls}" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
     }).join('');
 
     backContainer.innerHTML = all.后区.map(item => {
-      const gradient = item.label === '热' ? 'var(--hot-color)' : item.label === '温' ? 'var(--warm-color)' : 'var(--cold-color)';
+      const cls = item.label === '热' ? 'hot' : item.label === '温' ? 'warm' : 'cold';
       const title = `号 ${item.num} · ${item.label} · 出现 ${item.count} 次 · 当前遗漏 ${item.currentMiss} · 最大遗漏 ${item.maxMiss}`;
-      return `<div class="stat-ball" style="background: ${gradient};" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
+      return `<div class="stat-ball ${cls}" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
     }).join('');
   }
 
