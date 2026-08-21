@@ -17,6 +17,7 @@
     currentPeriod: null,        // 当前显示的期号
     currentDate: null,           // 当前显示的开奖日期
     usingFallback: false,        // 是否使用 fallback 数据
+    statsPeriod: 30,             // 冷热统计期数(可切 30/50/100)
   };
 
   // ===== 工具 =====
@@ -1184,6 +1185,9 @@
     else hide('statsPanel');
   });
 
+  // 冷热统计期数切换
+  bindStatsPeriodSwitch();
+
   // ===== 副链接列表 =====
   function renderShareList() {
     const list = Security.getMyShareLinks();
@@ -1235,9 +1239,11 @@
 
   // ===== 冷热统计可视化 =====
   function renderStats() {
-    const all = Stats.getAllHotCold(30);
+    const all = Stats.getAllHotCold(state.statsPeriod);
     const frontContainer = $('#frontBalls');
     const backContainer = $('#backBalls');
+    const periodLabel = $('#statsPeriodLabel');
+    if (periodLabel) periodLabel.textContent = state.statsPeriod;
 
     frontContainer.innerHTML = all.前区.map(item => {
       const cls = item.label === '热' ? 'hot' : item.label === '温' ? 'warm' : 'cold';
@@ -1250,6 +1256,22 @@
       const title = `号 ${item.num} · ${item.label} · 出现 ${item.count} 次 · 当前遗漏 ${item.currentMiss} · 最大遗漏 ${item.maxMiss}`;
       return `<div class="stat-ball ${cls}" title="${escapeHtml(title)}">${String(item.num).padStart(2, '0')}<span class="stat-count">${item.count}</span></div>`;
     }).join('');
+  }
+
+  // 切换期数按钮
+  function bindStatsPeriodSwitch() {
+    const switcher = $('#statsPeriodSwitch');
+    if (!switcher) return;
+    switcher.addEventListener('click', (e) => {
+      const btn = e.target.closest('.period-btn');
+      if (!btn) return;
+      const period = parseInt(btn.dataset.period, 10);
+      if (!period || period === state.statsPeriod) return;
+      state.statsPeriod = period;
+      switcher.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderStats();
+    });
   }
 
   // ===== 副链接模式 UI =====
