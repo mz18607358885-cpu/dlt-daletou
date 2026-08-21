@@ -375,17 +375,49 @@ body {
   padding: 24px;
   margin-bottom: 24px;
 }
-.stats-panel h2 { font-size: 18px; margin-bottom: 16px; }
+.stats-panel h2 { font-size: 18px; margin-bottom: 12px; }
 .stats-panel h3 { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
 .stats-section { margin-bottom: 20px; }
+
+/* 冷热图例 */
+.stats-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+.legend-dot.hot { background: #ef4444; border-color: #fca5a5; }
+.legend-dot.warm { background: #f59e0b; border-color: #fcd34d; }
+.legend-dot.cold { background: #3b82f6; border-color: #93c5fd; }
+
 .ball-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 10px;
 }
 .ball-grid-back {
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
 }
+
+/* 冷热球:3 档清晰实色 + 边框 + 角标 */
 .stat-ball {
   aspect-ratio: 1;
   border-radius: 50%;
@@ -393,20 +425,64 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 800;
+  font-size: 15px;
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
+  border: 3px solid transparent;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.stat-ball:hover { transform: scale(1.1); }
+/* 热号:亮红 + 亮红边 */
+.stat-ball.hot {
+  background: #ef4444;
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 1px #ef4444, 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+/* 温号:橙 */
+.stat-ball.warm {
+  background: #f59e0b;
+  border-color: #fcd34d;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+/* 冷号:蓝 */
+.stat-ball.cold {
+  background: #3b82f6;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 1px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+.stat-ball:hover {
+  transform: scale(1.12);
+  z-index: 2;
+}
 .stat-ball .stat-count {
-  font-size: 9px;
-  font-weight: 500;
-  opacity: 0.8;
-  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.95;
+  margin-top: 1px;
+  letter-spacing: 0.3px;
 }
+/* 冷热角标 */
+.stat-ball::after {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #1f2937;
+  font-weight: 800;
+  line-height: 1;
+}
+.stat-ball.hot::after { content: "🔥"; background: #fef2f2; }
+.stat-ball.cold::after { content: "❄"; background: #eff6ff; }
+.stat-ball.warm::after { content: ""; }
 
 /* 副链接列表 */
 .shares-panel { padding: 24px; }
