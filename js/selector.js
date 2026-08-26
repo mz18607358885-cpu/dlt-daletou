@@ -127,6 +127,33 @@
   function sampleFront(zones, usedNums, n = 5) {
     const results = [];
     const attempts = 2000;
+    // 全部 6 种合法分布(每区至少 1,至多 3,总和 5)
+    //   带 2 的平衡型(2-2-1 类 3 种)— 70% 概率,更常见
+    //   带 3 的集中型(3-1-1 类 3 种)— 30% 概率,打破套路
+    const distrosBalanced = [[2, 2, 1], [2, 1, 2], [1, 2, 2]];
+    const distrosConcentrated = [[3, 1, 1], [1, 3, 1], [1, 1, 3]];
+
+    // 每组有一个"主分布"倾向(让 5 组之间有差异,不全是同一种)
+    //  - 第 1/2 组偏 z1 多(2-2-1, 2-1-2)
+    //  - 第 3 组偏 z2 多(1-2-2)
+    //  - 第 4/5 组更激进(带 3 的分布)
+    function pickDistro(groupIdx) {
+      const r = Math.random();
+      // 第 5 组更倾向带 3 的分布(打破套路)
+      if (groupIdx >= 4) {
+        if (r < 0.5) return distrosConcentrated[Math.floor(Math.random() * 3)];
+        return distrosBalanced[Math.floor(Math.random() * 3)];
+      }
+      // 中间组适度带 3
+      if (groupIdx === 3) {
+        if (r < 0.4) return distrosConcentrated[Math.floor(Math.random() * 3)];
+        return distrosBalanced[Math.floor(Math.random() * 3)];
+      }
+      // 前 3 组多平衡
+      if (r < 0.2) return distrosConcentrated[Math.floor(Math.random() * 3)];
+      return distrosBalanced[Math.floor(Math.random() * 3)];
+    }
+
     for (let k = 0; k < n; k++) {
       let ok = false;
       for (let a = 0; a < attempts; a++) {
@@ -134,9 +161,7 @@
         // 必须覆盖 3 个 zone,各 1-3 个
         // 单区最多 3
         // 总共 5 个
-        // 我们强制: 2/2/1 或 2/1/2 或 1/2/2 这三种分布
-        const distros = [[2, 2, 1], [2, 1, 2], [1, 2, 2]];
-        const distro = distros[Math.floor(Math.random() * distros.length)];
+        const distro = pickDistro(k);
         const picks = [];
         for (let z = 0; z < 3; z++) {
           const pool = zones[z + 1].filter(x => !usedNums.has(x) && !picks.includes(x));
@@ -161,8 +186,7 @@
       if (!ok) {
         // 兜底:放弃 usedNums 限制,严格满足硬性规则
         for (let a = 0; a < attempts; a++) {
-          const distros = [[2, 2, 1], [2, 1, 2], [1, 2, 2]];
-          const distro = distros[Math.floor(Math.random() * distros.length)];
+          const distro = pickDistro(k);
           const picks = [];
           for (let z = 0; z < 3; z++) {
             const pool = zones[z + 1];
