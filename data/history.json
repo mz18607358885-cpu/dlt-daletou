@@ -1504,9 +1504,9 @@
   "nextDraw": "26098",
   "meta": {
     "source": "web-search (55128.cn, ydniu.com, 800820.net)",
-    "fetchedAt": "2026-08-26T13:39:51Z",
+    "fetchedAt": "2026-08-26T16:32:26Z",
     "totalDraws": 100,
-    "note": "GitHub Actions 自动更新 - 22:00 补救抓取",
+    "note": "00:30 兜底抓取 - 26098 尚未开奖, 已确认 26097 (8-26 21:25) 与官方一致",
     "firstDraw": "25147",
     "lastDraw": "26097"
   }
