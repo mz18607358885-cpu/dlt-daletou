@@ -1499,15 +1499,30 @@
         2,
         9
       ]
+    },
+    {
+      "期号": "26099",
+      "开奖日期": "2026-08-31",
+      "前区": [
+        2,
+        17,
+        20,
+        29,
+        33
+      ],
+      "后区": [
+        8,
+        9
+      ]
     }
   ],
-  "nextDraw": "26099",
+  "nextDraw": "26100",
   "meta": {
     "source": "sporttery.cn",
-    "fetchedAt": "2026-08-29T13:58:46Z",
-    "totalDraws": 101,
+    "fetchedAt": "2026-08-31T22:02:15+08:00",
+    "totalDraws": 102,
     "note": "GitHub Actions 自动更新",
     "firstDraw": "25147",
-    "lastDraw": "26098"
+    "lastDraw": "26099"
   }
 }
