@@ -1514,15 +1514,30 @@
         8,
         9
       ]
+    },
+    {
+      "期号": "26100",
+      "开奖日期": "2026-09-02",
+      "前区": [
+        2,
+        6,
+        11,
+        15,
+        31
+      ],
+      "后区": [
+        7,
+        8
+      ]
     }
   ],
-  "nextDraw": "26100",
+  "nextDraw": "26101",
   "meta": {
-    "source": "sporttery.cn",
-    "fetchedAt": "2026-08-31T22:02:15+08:00",
-    "totalDraws": 102,
+    "source": "sporttery.cn (manual verify: sina/sina.cn)",
+    "fetchedAt": "2026-09-02T22:01:45+08:00",
+    "totalDraws": 103,
     "note": "GitHub Actions 自动更新",
     "firstDraw": "25147",
-    "lastDraw": "26099"
+    "lastDraw": "26100"
   }
 }
