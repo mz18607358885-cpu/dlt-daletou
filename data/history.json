@@ -1489,25 +1489,26 @@
       "期号": "26101",
       "开奖日期": "2026-09-05",
       "前区": [
-        3,
-        4,
+        9,
         11,
-        15,
-        28
+        18,
+        26,
+        33
       ],
       "后区": [
-        2,
-        3
+        9,
+        11
       ]
     }
   ],
   "nextDraw": "26102",
   "meta": {
     "source": "sporttery.cn (manual verify: sina/sina.cn)",
-    "fetchedAt": "2026-09-05T21:33:00+08:00",
+    "fetchedAt": "2026-09-05T22:02:29+08:00",
     "totalDraws": 100,
-    "note": "GitHub Actions 自动更新",
+    "note": "GitHub Actions 自动更新 (修正 26101 期错误数据)",
     "firstDraw": "25150",
-    "lastDraw": "26101"
+    "lastDraw": "26101",
+    "nextDraw": "26102"
   }
 }
