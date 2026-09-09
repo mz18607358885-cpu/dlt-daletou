@@ -1499,16 +1499,31 @@
         6,
         7
       ]
+    },
+    {
+      "期号": "26103",
+      "开奖日期": "2026-09-09",
+      "前区": [
+        3,
+        16,
+        17,
+        32,
+        35
+      ],
+      "后区": [
+        2,
+        12
+      ]
     }
   ],
-  "nextDraw": "26102",
+  "nextDraw": "26104",
   "meta": {
     "source": "sporttery.cn (manual verify: sina/sina.cn)",
-    "fetchedAt": "2026-09-07T23:01:59+08:00",
-    "totalDraws": 100,
-    "note": "GitHub Actions 自动更新 (cron 抓取 26102 期)",
+    "fetchedAt": "2026-09-09T22:30:00+08:00",
+    "totalDraws": 101,
+    "note": "GitHub Actions 自动抓取 (cron 北京时间 22:00, 新增 26103 期)",
     "firstDraw": "26001",
-    "lastDraw": "26102",
-    "nextDraw": "26103"
+    "lastDraw": "26103",
+    "nextDraw": "26104"
   }
 }
