@@ -86,11 +86,12 @@ export default async (req) => {
       const data = await getDeviceData(token);
       const isAllowed = device ? data.devices.includes(device) : false;
 
-      // 设备列表(带 firstSeen),用于管理界面
+      // 设备列表(带 firstSeen + 设备名),用于管理界面
       const deviceList = data.devices.map(h => ({
         hash: h,
         hashShort: h.substring(0, 12) + '...',
         firstSeen: data.firstSeen[h] || 0,
+        name: (data.deviceNames && data.deviceNames[h]) || '',
         isCurrent: h === device
       })).sort((a, b) => a.firstSeen - b.firstSeen); // 按首次时间升序
 
@@ -107,7 +108,7 @@ export default async (req) => {
 
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
-      const { token, deviceHash, action } = body;
+      const { token, deviceHash, action, deviceName, renameHash, newName } = body;
 
       if (!token) return jsonResponse({ error: 'missing token' }, 400);
 
@@ -126,6 +127,12 @@ export default async (req) => {
         }
         // 已经在列表中,直接通过(不更新 firstSeen)
         if (data.devices.includes(deviceHash)) {
+          // 如果传了新名字,更新设备名(允许改名)
+          if (deviceName && deviceName.trim()) {
+            if (!data.deviceNames) data.deviceNames = {};
+            data.deviceNames[deviceHash] = deviceName.trim().slice(0, 20);
+            await setDeviceData(token, data);
+          }
           return jsonResponse({
             ok: true,
             allowed: true,
@@ -144,9 +151,13 @@ export default async (req) => {
             max: MAX_DEVICES_PER_TOKEN
           });
         }
-        // 添加 + 记录首次时间
+        // 添加 + 记录首次时间 + 设备名
         data.devices.push(deviceHash);
         data.firstSeen[deviceHash] = Date.now();
+        if (deviceName && deviceName.trim()) {
+          if (!data.deviceNames) data.deviceNames = {};
+          data.deviceNames[deviceHash] = deviceName.trim().slice(0, 20);
+        }
         await setDeviceData(token, data);
         return jsonResponse({
           ok: true,
@@ -165,6 +176,17 @@ export default async (req) => {
           count: data.devices.length,
           max: MAX_DEVICES_PER_TOKEN
         });
+      }
+
+      // 改名:更新某个已绑定设备的别名
+      if (action === 'rename') {
+        if (!renameHash || !newName) return jsonResponse({ error: 'missing renameHash/newName' }, 400);
+        const data = await getDeviceData(token);
+        if (!data.devices.includes(renameHash)) return jsonResponse({ error: 'device not found' }, 404);
+        if (!data.deviceNames) data.deviceNames = {};
+        data.deviceNames[renameHash] = newName.trim().slice(0, 20);
+        await setDeviceData(token, data);
+        return jsonResponse({ ok: true, name: data.deviceNames[renameHash] });
       }
 
       return jsonResponse({ error: 'unknown action' }, 400);
