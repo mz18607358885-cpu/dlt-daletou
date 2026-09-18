@@ -792,23 +792,43 @@ body {
 .device-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 8px 0;
+  padding: 10px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 13px;
   flex-wrap: wrap;
 }
 .device-row:first-child { border-top: none; }
 .device-row.is-current { background: rgba(80, 180, 255, 0.08); border-radius: 6px; padding: 8px 10px; margin: 0 -10px; }
+.device-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.device-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
 .device-hash {
   font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 6px;
   border-radius: 4px;
+  white-space: nowrap;
 }
-.device-time { font-size: 11px; color: var(--text-muted); margin-right: auto; }
+.device-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.device-time { font-size: 11px; color: var(--text-muted); }
 .device-tag {
   font-size: 10px;
   font-weight: 600;
@@ -817,8 +837,10 @@ body {
   background: rgba(80, 200, 120, 0.2);
   color: rgb(120, 220, 150);
 }
-.device-remove { font-size: 11px; padding: 4px 10px; }
-.device-remove-btn { font-size: 11px; padding: 3px 8px; margin-left: 4px; }
+.device-rename, .device-remove, .device-remove-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+}
 .btn-danger {
   background: rgba(255, 80, 80, 0.15);
   color: rgb(255, 130, 130);
