@@ -58,7 +58,8 @@
     AUTH_FAIL_COUNT:   'dlt:auth:fails',
     AUTH_LOCK_START:   'dlt:auth:lockStart',
     SHARE_LINKS:       'dlt:shareLinks',
-    CONSUMED_TOKENS:   'dlt:consumedTokens'
+    CONSUMED_TOKENS:   'dlt:consumedTokens',
+    DEVICE_NAME:       'dlt:deviceName'
   });
 
   const MAX_FAILS = 5;
@@ -308,9 +309,13 @@
   }
 
   // ===== Device fingerprint =====
+  // 设计原则:**一台手机 = 一台设备**,忽略浏览器差异
+  //   - 不使用 userAgent(同一手机 Safari/Chrome UA 不同 → 会算两台)
+  //   - 只用设备级信息(屏幕、系统、时区、CPU 等)
+  //   - 用户首次访问时给设备起别名,管理面板可见
+  //
   // 注意:不再使用 canvas.toDataURL() 做指纹(会触发部分浏览器的
   // 隐私/fingerprinting 警告,iOS Safari、Brave、Firefox 隐私模式会拦截)
-  // 改用 navigator/screen/timezone/language 等基础特征做组合指纹
 
   function getDeviceFingerprint() {
     const nav = (typeof navigator !== 'undefined') ? navigator : {};
@@ -318,23 +323,70 @@
     const tz = (typeof Intl !== 'undefined')
       ? (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
       : '';
+    // 不包含 userAgent / languages(浏览器差异)
+    // 只包含:操作系统、屏幕尺寸、色深、CPU 核心、时区、平台、触屏
     const parts = [
-      nav.userAgent || '',
-      (scr.width || 0) + 'x' + (scr.height || 0),
+      nav.platform || '',                              // iPhone/Android/Linux x86_64
+      (scr.width || 0) + 'x' + (scr.height || 0),     // 屏幕分辨率(同型号手机相同)
+      String(scr.availWidth || 0) + 'x' + String(scr.availHeight || 0),
       String(scr.colorDepth || 0),
-      tz,
-      String(nav.hardwareConcurrency || 0),
-      nav.language || '',
-      nav.platform || '',
-      (nav.languages || []).join(','),
       String(scr.pixelDepth || 0),
-      String(nav.maxTouchPoints || 0)
+      String(nav.hardwareConcurrency || 0),            // CPU 核心数
+      String(nav.maxTouchPoints || 0),                 // 触屏点数
+      String(nav.deviceMemory || 0),                   // 设备内存(支持时)
+      tz,                                              // 时区
     ];
     return parts.join('|');
   }
 
   function getDeviceHash() {
     return sha256Hex(getDeviceFingerprint());
+  }
+
+  // ===== 设备别名(用户自己给设备起名字) =====
+  // 首次访问副链接时弹窗让用户输入,默认根据 navigator 自动生成
+  function getAutoDeviceName() {
+    const nav = (typeof navigator !== 'undefined') ? navigator : {};
+    const scr = (typeof screen !== 'undefined')    ? screen    : {};
+    const ua = nav.userAgent || '';
+    const platform = nav.platform || '';
+    const touch = nav.maxTouchPoints > 0;
+    const w = scr.width || 0, h = scr.height || 0;
+
+    // 推断设备类型
+    let type = '设备';
+    if (/iPhone/i.test(ua) || (/iOS/i.test(platform))) type = 'iPhone';
+    else if (/iPad/i.test(ua) || (/iPad/i.test(platform))) type = 'iPad';
+    else if (/Android/i.test(ua)) {
+      // 安卓按宽度分手机/平板
+      type = Math.max(w, h) >= 900 ? '安卓平板' : '安卓手机';
+    }
+    else if (/Macintosh/i.test(platform) && touch) type = 'Mac';
+    else if (/Macintosh/i.test(platform)) type = 'Mac';
+    else if (/Windows/i.test(platform)) type = '电脑';
+    else if (/Linux/i.test(platform)) type = 'Linux';
+    return type;
+  }
+
+  // 加载/保存当前设备的别名
+  function getDeviceName() {
+    try {
+      const k = STORAGE_KEYS.DEVICE_NAME || 'dlt:deviceName';
+      const existing = storage.get(k);
+      if (existing) return existing;
+      // 没有就生成一个默认名
+      const name = getAutoDeviceName() + '-' + Date.now().toString(36).slice(-4);
+      storage.set(k, name);
+      return name;
+    } catch (_) {
+      return '设备';
+    }
+  }
+
+  function setDeviceName(name) {
+    if (!name || typeof name !== 'string') return;
+    const k = STORAGE_KEYS.DEVICE_NAME || 'dlt:deviceName';
+    storage.set(k, name.trim().slice(0, 20));
   }
 
   // ===== Password / auth =====
