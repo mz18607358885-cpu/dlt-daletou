@@ -35,6 +35,7 @@
   // ===== 设备绑定(副链接 5 台设备上限) =====
   async function checkDeviceBinding(token) {
     const deviceHash = Security.getDeviceHash();
+    const deviceName = Security.getDeviceName();
     const endpoint = '/.netlify/functions/device-auth';
 
     // 1. 查当前设备是否已在列表中
@@ -42,6 +43,14 @@
     const getData = await getResp.json();
 
     if (getData.deviceAllowed) {
+      // 已在列表,如果有 deviceName 就同步更新(允许重命名)
+      if (deviceName && deviceName !== (getData.deviceNames && getData.deviceNames[deviceHash])) {
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, deviceHash, deviceName, action: 'register' })
+        });
+      }
       return { allowed: true, count: getData.count, max: getData.max };
     }
 
@@ -52,6 +61,7 @@
       body: JSON.stringify({
         token: token,
         deviceHash: deviceHash,
+        deviceName: deviceName,
         action: 'register'
       })
     });
@@ -68,6 +78,22 @@
       count: postData.count,
       max: postData.max
     };
+  }
+
+  // 弹出设备名输入对话框(首次访问副链接时)
+  function promptForDeviceName(currentName) {
+    return new Promise((resolve) => {
+      const hint = currentName ? `当前: ${currentName}` : '首次访问副链接时建议起个名字,方便在管理界面识别。';
+      const input = prompt(`📱 给这台设备起个名字\n\n${hint}\n\n(例:"老公手机"、"公司电脑"、"iPhone 15")`, currentName || '');
+      if (input === null) {
+        resolve(null); // 用户取消
+      } else if (input.trim()) {
+        Security.setDeviceName(input.trim());
+        resolve(input.trim());
+      } else {
+        resolve(currentName || '设备');
+      }
+    });
   }
 
   // ===== 入口 =====
@@ -127,8 +153,16 @@
       if (verify && verify.valid) {
         state.shareToken = verify.token;  // 记录当前 share token,供设备管理用
         // 调用 Netlify Function 做设备绑定检查(5台上限)
-        checkDeviceBinding(verify.token).then(deviceResult => {
+        checkDeviceBinding(verify.token).then(async deviceResult => {
           if (deviceResult.allowed) {
+            // 首次成功注册时,提示用户给设备起名(可选)
+            if (deviceResult.newlyRegistered) {
+              const cur = Security.getDeviceName();
+              // 默认名是 "iPhone-xxxx" 这种自动生成的,这时才询问
+              if (cur && /-[a-z0-9]{4}$/.test(cur)) {
+                await promptForDeviceName(cur);
+              }
+            }
             state.shareLinkValid = true;
             showSharePasswordModal();
           } else {
@@ -758,10 +792,16 @@
             ${data.devices.length === 0 ? '<div class="device-empty">暂无设备绑定</div>' :
               data.devices.map(d => `
                 <div class="device-row ${d.isCurrent ? 'is-current' : ''}" data-hash="${escapeHtml(d.hash)}">
-                  <code class="device-hash">${escapeHtml(d.hashShort)}</code>
-                  <span class="device-time">${formatDateTime(d.firstSeen)}</span>
-                  ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
-                  <button class="btn btn-sm btn-ghost device-remove" data-action="remove-device" data-token="${escapeHtml(link.token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
+                  <div class="device-info">
+                    <span class="device-name">${escapeHtml(d.name || '未命名设备')}</span>
+                    <code class="device-hash">${escapeHtml(d.hashShort)}</code>
+                    ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
+                  </div>
+                  <div class="device-meta">
+                    <span class="device-time">${formatDateTime(d.firstSeen)}</span>
+                    <button class="btn btn-sm btn-ghost device-rename" data-action="rename-device" data-token="${escapeHtml(link.token)}" data-hash="${escapeHtml(d.hash)}" data-current-name="${escapeHtml(d.name || '')}">改名</button>
+                    <button class="btn btn-sm btn-ghost device-remove" data-action="remove-device" data-token="${escapeHtml(link.token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
+                  </div>
                 </div>
               `).join('')
             }
@@ -833,10 +873,16 @@
           ${data.devices.length === 0 ? '<div class="device-empty">该副链接暂无设备绑定</div>' :
             data.devices.map(d => `
               <div class="device-row">
-                <code class="device-hash">${escapeHtml(d.hashShort)}</code>
-                <span class="device-time">${formatDateTime(d.firstSeen)}</span>
-                ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
-                <button class="btn btn-sm btn-ghost device-remove-btn" data-action="remove-searched-device" data-token="${escapeHtml(token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
+                <div class="device-info">
+                  <span class="device-name">${escapeHtml(d.name || '未命名设备')}</span>
+                  <code class="device-hash">${escapeHtml(d.hashShort)}</code>
+                  ${d.isCurrent ? '<span class="device-tag">当前设备</span>' : ''}
+                </div>
+                <div class="device-meta">
+                  <span class="device-time">${formatDateTime(d.firstSeen)}</span>
+                  <button class="btn btn-sm btn-ghost device-rename" data-action="rename-searched-device" data-token="${escapeHtml(token)}" data-hash="${escapeHtml(d.hash)}" data-current-name="${escapeHtml(d.name || '')}">改名</button>
+                  <button class="btn btn-sm btn-ghost device-remove-btn" data-action="remove-searched-device" data-token="${escapeHtml(token)}" data-hash="${escapeHtml(d.hash)}">移除</button>
+                </div>
               </div>
             `).join('')
           }
@@ -998,6 +1044,48 @@
       if (actions) actions.hidden = !isHidden;
       btn.textContent = isHidden ? '收起' : '查看设备';
       card.dataset.expanded = isHidden ? 'true' : 'false';
+      return;
+    }
+
+    if (action === 'rename-device' || action === 'rename-searched-device') {
+      const deviceHash = btn.dataset.hash;
+      const cur = btn.dataset.currentName || '';
+      if (!deviceHash) return;
+      const newName = prompt('📱 给这台设备起个名字\n(建议:"老公手机"、"公司电脑"、"iPhone 15")', cur);
+      if (newName === null || !newName.trim()) return;
+      const trimmed = newName.trim().slice(0, 20);
+      btn.disabled = true;
+      btn.textContent = '保存中...';
+      try {
+        const resp = await fetch('/.netlify/functions/device-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, action: 'rename', renameHash: deviceHash, newName: trimmed })
+        });
+        const res = await resp.json();
+        if (res.ok) {
+          showCopyToast('已改名为 ' + trimmed);
+          // 同时更新本设备的 localStorage 别名(如果改的是当前设备)
+          if (Security.getDeviceHash() === deviceHash) {
+            Security.setDeviceName(trimmed);
+          }
+          // 重新渲染
+          if (action === 'rename-searched-device') {
+            const data = await fetchDeviceList(token);
+            renderDeviceSearchResult(data, token);
+          } else {
+            await renderDevices();
+          }
+        } else {
+          showCopyToast('改名失败: ' + (res.error || '未知错误'));
+          btn.disabled = false;
+          btn.textContent = '改名';
+        }
+      } catch (err) {
+        showCopyToast('网络错误');
+        btn.disabled = false;
+        btn.textContent = '改名';
+      }
       return;
     }
 
