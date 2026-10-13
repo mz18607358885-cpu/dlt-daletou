@@ -32,52 +32,12 @@
 
   function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 
-  // ===== 设备绑定(副链接 5 台设备上限) =====
+  // ===== 设备绑定(无服务器模式 - 部署到 Cloudflare Pages) =====
+  // 历史:之前用 Netlify Function + Blobs 限制 5 设备。
+  // CF Pages 无服务器 KV 存储,新方案:不限制设备数,只验证副链接密码即可。
+  // 任何知道副链接密码的人都能用,牺牲"限设备"换"零成本部署"。
   async function checkDeviceBinding(token) {
-    const deviceHash = Security.getDeviceHash();
-    const deviceName = Security.getDeviceName();
-    const endpoint = '/.netlify/functions/device-auth';
-
-    // 1. 查当前设备是否已在列表中
-    const getResp = await fetch(`${endpoint}?token=${encodeURIComponent(token)}&device=${encodeURIComponent(deviceHash)}`);
-    const getData = await getResp.json();
-
-    if (getData.deviceAllowed) {
-      // 已在列表,如果有 deviceName 就同步更新(允许重命名)
-      if (deviceName && deviceName !== (getData.deviceNames && getData.deviceNames[deviceHash])) {
-        await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, deviceHash, deviceName, action: 'register' })
-        });
-      }
-      return { allowed: true, count: getData.count, max: getData.max };
-    }
-
-    // 2. 不在列表 → 尝试注册(只有列表未满时才会成功)
-    const postResp = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: token,
-        deviceHash: deviceHash,
-        deviceName: deviceName,
-        action: 'register'
-      })
-    });
-    const postData = await postResp.json();
-
-    if (postData.allowed) {
-      return { allowed: true, count: postData.count, max: postData.max, newlyRegistered: !postData.alreadyRegistered };
-    }
-
-    // 3. 注册失败(可能是设备数已满)
-    return {
-      allowed: false,
-      reason: postData.reason || 'device_blocked',
-      count: postData.count,
-      max: postData.max
-    };
+    return { allowed: true, count: 0, max: 0, noServer: true };
   }
 
   // 弹出设备名输入对话框(首次访问副链接时)
