@@ -1546,14 +1546,28 @@
       ]
     }
   ],
-  "nextDraw": "26119",
+  "nextDraw": {
+    "期号": "26120",
+    "开奖日期": "2026-10-22",
+    "前区": [
+      3,
+      11,
+      17,
+      24,
+      32
+    ],
+    "后区": [
+      7,
+      10
+    ]
+  },
   "meta": {
-    "source": "lottery.gov.cn (cross-verified: jslottery / hljtycp / nmtc / m.ydniu / 500.com)",
-    "fetchedAt": "2026-10-17T14:06:02Z",
-    "totalDraws": 102,
-    "note": "GitHub Actions cron 22:00 北京 (= 14:00 UTC) + 21:30 补救窗口. 含 26118 期 (2026-10-17 周六开奖, 前区 [2, 9, 21, 26, 32] 后区 [6, 12]). 交叉验证源: 新浪体育 / 澳客网 (okooo.cn) / 东方财富网彩票. 下一期 26119 (2026-10-19 周一 21:25 开奖).",
+    "source": "lottery.gov.cn (cross-verified: js-lottery 官方公告 / sporttery.cn 竞彩网)",
+    "fetchedAt": "2026-10-21T14:03:50Z",
+    "totalDraws": 103,
+    "note": "GitHub Actions cron 22:00 北京 (= 14:00 UTC) + 21:30 补救窗口. 含 26119 期 (2026-10-19 开奖, 前区 [3, 6, 20, 24, 32] 后区 [4, 7]). 交叉验证源: 江苏体彩网官方开奖公告 (js-lottery.com) + 竞彩网 sporttery.cn. 下一期 26120 (2026-10-22 预计开奖).",
     "firstDraw": "26015",
-    "lastDraw": "26118",
-    "nextDraw": "26119"
+    "lastDraw": "26119",
+    "nextDraw": "26120"
   }
 }
