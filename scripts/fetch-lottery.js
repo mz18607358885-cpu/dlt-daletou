@@ -131,34 +131,58 @@ async function main() {
   // 按期号排序(从旧到新)
   draws.sort((a, b) => parseInt(a.期号, 10) - parseInt(b.期号, 10));
 
-  // 模拟下一期
-  const last = draws[draws.length - 1];
+  // ⚠️ 合并而非覆盖:API 单页最多返回 ~100 期,直接覆盖会把最旧的若干期截断掉。
+  // 这里保留 API 未覆盖到的历史期(按期号去重,API 数据优先),避免历史数据被逐步吃光。
+  const apiNums = new Set(draws.map(d => d.期号));
+  const kept = (existing && Array.isArray(existing.draws) ? existing.draws : [])
+    .filter(d => d && d.期号 && !apiNums.has(String(d.期号)))
+    .map(d => ({
+      期号: String(d.期号),
+      开奖日期: d.开奖日期,
+      前区: d.前区,
+      后区: d.后区,
+    }));
+  if (kept.length) {
+    console.log(`[fetch-lottery] 保留 API 未覆盖的 ${kept.length} 期历史数据 (最旧 ${kept[0].期号})`);
+  }
+  const merged = kept.concat(draws).sort((a, b) => parseInt(a.期号, 10) - parseInt(b.期号, 10));
+
+  // 下一期:大乐透每周一/三/六 21:25 开奖,取最后一次开奖之后的下一个开奖日
+  // 注意:JS 的 getUTCDay() 是 0=周日,1=周一,...,6=周六
+  const last = merged[merged.length - 1];
   const lastNum = parseInt(last.期号, 10);
   const nextNum = lastNum + 1;
-  const lastDate = new Date(last.开奖日期);
-  const nextDate = new Date(lastDate.getTime() + 2 * 86400000);
+  const lastDate = new Date(last.开奖日期 + 'T00:00:00Z');
+  const nextDate = new Date(lastDate.getTime());
+  do {
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  } while (![1, 3, 6].includes(nextDate.getUTCDay())); // 1=周一 3=周三 6=周六
   const nextDateStr = nextDate.toISOString().slice(0, 10);
   const nextDraw = {
     期号: String(nextNum),
     开奖日期: nextDateStr,
-    前区: [3, 11, 17, 24, 32],
-    后区: [7, 10],
+    前区: null,
+    后区: null,
   };
 
   const out = {
-    draws: draws,
+    draws: merged,
     nextDraw: nextDraw,
     meta: {
-      source: 'sporttery.cn',
+      ...(existing && existing.meta ? existing.meta : {}),
+      source: 'lottery.gov.cn (cross-verified: 官方 API webapi.sporttery.cn getHistoryPageListV1 gameNo=85 + 500.com)',
       fetchedAt: new Date().toISOString(),
-      totalDraws: draws.length,
+      totalDraws: merged.length,
       note: 'GitHub Actions 自动更新',
+      firstDraw: merged[0].期号,
+      lastDraw: last.期号,
+      nextDraw: nextDraw.期号,
     },
   };
 
   // 比较是否真的有新数据
-  const oldLatest = existing ? existing.draws[existing.draws.length - 1] : null;
-  const newLatest = draws[draws.length - 1];
+  const oldLatest = existing && existing.draws.length ? existing.draws[existing.draws.length - 1] : null;
+  const newLatest = merged[merged.length - 1];
   if (oldLatest && oldLatest.期号 === newLatest.期号) {
     console.log(`[fetch-lottery] 最新期号无变化 (${newLatest.期号}),只更新 fetchedAt`);
 
@@ -171,7 +195,7 @@ async function main() {
   const json = JSON.stringify(out, null, 2);
   fs.writeFileSync(DATA_PATH, json, 'utf-8');
   console.log(`[fetch-lottery] 已写入 ${DATA_PATH}`);
-  console.log(`[fetch-lottery] draws=${draws.length}, 首期=${draws[0].期号}, 末期=${newLatest.期号}, 下一期=${nextDraw.期号}`);
+  console.log(`[fetch-lottery] draws=${merged.length}, 首期=${merged[0].期号}, 末期=${newLatest.期号}, 下一期=${nextDraw.期号} (${nextDraw.开奖日期})`);
 }
 
 main().catch(e => {
