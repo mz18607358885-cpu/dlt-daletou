@@ -1814,21 +1814,36 @@
         1,
         8
       ]
+    },
+    {
+      "期号": "26122",
+      "开奖日期": "2026-10-26",
+      "前区": [
+        2,
+        14,
+        21,
+        22,
+        24
+      ],
+      "后区": [
+        2,
+        12
+      ]
     }
   ],
   "nextDraw": {
-    "期号": "26122",
-    "开奖日期": "2026-10-26",
+    "期号": "26123",
+    "开奖日期": "2026-10-28",
     "前区": null,
     "后区": null
   },
   "meta": {
     "source": "lottery.gov.cn (cross-verified: 官方 API webapi.sporttery.cn getHistoryPageListV1 gameNo=85 + 500.com)",
-    "fetchedAt": "2026-10-24T16:33:38.074Z",
-    "totalDraws": 121,
+    "fetchedAt": "2026-10-26T13:44:10.863Z",
+    "totalDraws": 122,
     "note": "GitHub Actions 自动更新",
     "firstDraw": "26001",
-    "lastDraw": "26121",
-    "nextDraw": "26122"
+    "lastDraw": "26122",
+    "nextDraw": "26123"
   }
 }
