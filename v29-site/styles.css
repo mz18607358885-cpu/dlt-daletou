@@ -1,0 +1,697 @@
+/* 大乐透分析系统 v4 - 立体球 + 专业 UI */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0e14;
+  --bg-2: #11161e;
+  --bg-3: #1a2029;
+  --bg-4: #232a35;
+  --card: #131820;
+  --card-2: #1a2029;
+  --line: #2a3140;
+  --line-soft: #1f2530;
+  --ink: #e8ecf2;
+  --ink-2: #c0c8d4;
+  --ink-3: #8892a3;
+  --ink-4: #5a6478;
+  --primary: #ff6b35;
+  --primary-2: #ff8c42;
+  --primary-soft: rgba(255, 107, 53, 0.12);
+  --red: #e74c3c;
+  --red-2: #c0392b;
+  --red-3: #a93226;
+  --red-soft: rgba(231, 76, 60, 0.15);
+  --blue: #3498db;
+  --blue-2: #2980b9;
+  --blue-3: #1f6699;
+  --blue-soft: rgba(52, 152, 219, 0.15);
+  --yellow: #f1c40f;
+  --yellow-2: #f39c12;
+  --yellow-soft: rgba(241, 196, 15, 0.15);
+  --green: #2ecc71;
+  --green-soft: rgba(46, 204, 113, 0.15);
+  --warn: #e74c3c;
+  --warn-soft: rgba(231, 76, 60, 0.15);
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px -2px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 12px rgba(255, 107, 53, 0.3);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 107, 53, 0.04) 0%, transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  line-height: 1.5;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100vh;
+  overscroll-behavior-y: none;
+}
+
+.container { max-width: 1280px; margin: 0 auto; padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+@media (min-width: 768px) { .container { padding: 20px 24px; } }
+
+/* ============== 登录 ============== */
+.login-screen {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(231, 76, 60, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+    var(--bg);
+}
+
+.login-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 32px 28px;
+  width: 100%; max-width: 420px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
+}
+
+.login-title {
+  font-size: 22px; font-weight: 700;
+  text-align: center; margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--red), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.01em;
+}
+
+.login-sub {
+  text-align: center; color: var(--ink-3);
+  font-size: 13px; margin-bottom: 22px;
+}
+
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.input-group input {
+  width: 100%; padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+  background: var(--bg-3);
+  color: var(--ink);
+  transition: all 0.2s;
+}
+.input-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 5px;
+  padding: 9px 14px; border: 0;
+  border-radius: 7px;
+  font-size: 12.5px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: white; box-shadow: 0 2px 6px rgba(255, 107, 53, 0.3); }
+.btn-primary:hover { box-shadow: var(--shadow-glow); transform: translateY(-1px); }
+.btn-warn { background: linear-gradient(135deg, var(--red), var(--red-2)); color: white; box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3); }
+.btn-warn:hover { box-shadow: 0 0 12px rgba(231, 76, 60, 0.4); transform: translateY(-1px); }
+.btn-ghost { background: var(--line-soft); color: var(--ink-2); border: 1px solid var(--line); }
+.btn-ghost:hover { background: var(--line); color: var(--ink); }
+.btn-block { width: 100%; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.error-msg {
+  color: var(--warn);
+  font-size: 12px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--warn-soft);
+  border-radius: 6px;
+  display: none;
+}
+.error-msg.show { display: block; }
+
+/* ============== 顶部栏 ============== */
+.header {
+  background: linear-gradient(135deg, var(--card) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+.header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600;
+}
+
+.brand-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.4), transparent 50%),
+    linear-gradient(180deg, #ff6b5a 0%, var(--red) 50%, var(--red-2) 100%);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 14px;
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.3),
+    inset 0 -2px 3px rgba(0,0,0,0.2),
+    0 2px 8px rgba(231, 76, 60, 0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.latest-draw {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+  padding: 7px 11px;
+  background: var(--bg-3);
+  border-radius: 7px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+}
+
+.latest-draw .period { font-weight: 600; color: var(--primary); }
+
+.countdown {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 6px 10px;
+  background: var(--bg-3);
+  border-radius: 7px;
+  border: 1px solid var(--line);
+}
+
+.countdown-time {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 12.5px;
+}
+
+.user-actions { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-3); }
+.user-actions .badge { padding: 2px 8px; background: var(--primary-soft); color: var(--primary); border-radius: 6px; font-size: 11px; font-weight: 600; }
+
+/* ============== 标签页 ============== */
+.tabs {
+  display: flex; gap: 2px;
+  margin-bottom: 12px;
+  padding: 3px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab {
+  flex: 1; min-width: 80px;
+  padding: 9px 8px;
+  border: 0; background: transparent;
+  border-radius: 7px;
+  font-size: 12.5px; font-weight: 500;
+  cursor: pointer; color: var(--ink-3);
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+
+.tab.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+/* ============== 卡片 ============== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.card-title { font-size: 14px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.card-subtitle { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.section-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+
+.live-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ============== 杀号池布局 ============== */
+.kill-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 960px) {
+  .kill-layout { grid-template-columns: 1.3fr 1fr; }
+}
+
+/* ============== 最新开奖(左侧大卡片) ============== */
+.latest-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.latest-card::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, var(--primary-soft) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.latest-row {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 8px; flex-wrap: wrap;
+}
+
+.countdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 12px 0 8px;
+  padding: 10px;
+  background: var(--bg-3);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.countdown-cell { text-align: center; }
+.countdown-cell .num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+}
+.countdown-cell .lbl { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
+.next-info { font-size: 11.5px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+
+/* ============== 杀号区 ============== */
+.kill-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.kill-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kill-section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.kill-section-title .red-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b5a, var(--red-2));
+  display: inline-block;
+  box-shadow: 0 0 6px var(--red);
+}
+.kill-section-title .blue-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: linear-gradient(135deg, #5dade2, var(--blue-2));
+  display: inline-block;
+  box-shadow: 0 0 6px var(--blue);
+}
+
+.kill-section-hint { font-size: 11px; color: var(--ink-3); }
+.kill-section-actions { display: flex; gap: 5px; align-items: center; }
+
+.btn-mini {
+  padding: 4px 9px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  color: var(--ink-2);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: inherit;
+}
+.btn-mini:hover { background: var(--line); color: var(--ink); }
+.btn-mini.primary { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.btn-mini.primary:hover { background: var(--primary); color: white; }
+
+/* ============== 球网格(关键:固定大小 + 立体) ============== */
+.ball-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 0;
+}
+
+/* 蓝球用 6 列 (12 = 6×2) */
+#back-ball-grid {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.ball-cell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;  /* 正方形,自适应宽度 */
+  max-width: 40px;
+  margin: 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  color: var(--ink);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.ball-cell .num-text {
+  position: relative;
+  z-index: 3;
+}
+
+.ball-cell:hover {
+  transform: scale(1.1);
+  z-index: 5;
+}
+
+.ball-cell:active {
+  transform: scale(0.95);
+}
+
+/* 红球 3D 立体 */
+.ball-cell.front-color {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, transparent 60%),
+    linear-gradient(180deg, #ff6b5a 0%, #e74c3c 50%, #a93226 100%);
+  color: white;
+  border: 1px solid rgba(0,0,0,0.2);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.4),
+    inset 0 -2px 4px rgba(0,0,0,0.25),
+    0 2px 6px rgba(231, 76, 60, 0.4),
+    0 0 0 1px rgba(255, 107, 90, 0.1);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+/* 蓝球 3D 立体 */
+.ball-cell.back-color {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, transparent 60%),
+    linear-gradient(180deg, #5dade2 0%, #3498db 50%, #1f6699 100%);
+  color: white;
+  border: 1px solid rgba(0,0,0,0.2);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.4),
+    inset 0 -2px 4px rgba(0,0,0,0.25),
+    0 2px 6px rgba(52, 152, 219, 0.4),
+    0 0 0 1px rgba(93, 173, 226, 0.1);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+/* ============== 杀号状态(立体凹陷感) ============== */
+.ball-cell.killed {
+  background:
+    radial-gradient(circle at 70% 70%, rgba(231, 76, 60, 0.12) 0%, transparent 60%),
+    linear-gradient(180deg, #1a1f28 0%, #0d1117 100%) !important;
+  color: #e8eaed !important;
+  border: 1px solid rgba(231, 76, 60, 0.5) !important;
+  box-shadow:
+    inset 0 3px 6px rgba(0,0,0,0.7),
+    inset 0 -1px 1px rgba(255,255,255,0.05),
+    inset 0 0 0 1px rgba(231, 76, 60, 0.15) !important;
+  filter: grayscale(0.5);
+  opacity: 0.92;
+  text-shadow: none;
+}
+
+/* 杀号球的 ✕ 角标(右上角,不挡住数字) */
+.ball-cell.killed::before {
+  content: "✕";
+  position: absolute;
+  top: -3px; right: -3px;
+  width: 14px; height: 14px;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--bg);
+  box-shadow: 0 1px 3px rgba(231, 76, 60, 0.5);
+  z-index: 7;
+}
+
+.ball-cell.killed .num-text {
+  opacity: 1;
+  color: #e8eaed;  /* 白色,清楚显示 */
+  text-decoration: line-through;
+  text-decoration-color: rgba(231, 76, 60, 0.6);
+}
+  text-decoration-color: rgba(231, 76, 60, 0.6);
+  text-decoration-thickness: 1.5px;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+.ball-cell.back-color.killed {
+  color: #e8eaed !important;
+  border: 1px solid rgba(52, 152, 219, 0.5) !important;
+  box-shadow:
+    inset 0 3px 6px rgba(0,0,0,0.7),
+    inset 0 -1px 1px rgba(255,255,255,0.05),
+    inset 0 0 0 1px rgba(52, 152, 219, 0.15) !important;
+}
+
+.ball-cell.back-color.killed::before {
+  background: var(--blue);
+  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.5);
+}
+
+.ball-cell.back-color.killed .num-text {
+  color: rgba(52, 152, 219, 0.9);
+  text-decoration-color: rgba(52, 152, 219, 0.6);
+}
+
+.ball-cell.killed:hover {
+  opacity: 1;
+  transform: scale(1.05);
+  filter: grayscale(0.2);
+}
+
+/* 选中状态(已加入选号) */
+.ball-cell.selected {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, transparent 60%),
+    linear-gradient(180deg, #ff8c42 0%, #ff6b35 50%, #d44515 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(0,0,0,0.3) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.5),
+    inset 0 -2px 4px rgba(0,0,0,0.3),
+    0 0 16px rgba(255, 107, 53, 0.6),
+    0 2px 8px rgba(255, 107, 53, 0.4) !important;
+  filter: none !important;
+  opacity: 1 !important;
+  z-index: 4;
+  transform: scale(1.1);
+}
+
+.ball-cell.selected::before {
+  content: "✓" !important;
+  color: white !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 4px rgba(0,0,0,0.5);
+  font-size: 14px !important;
+}
+
+.ball-cell.selected .num-text {
+  text-decoration: none !important;
+  opacity: 0.75 !important;
+  font-size: 10px !important;
+  position: absolute;
+  bottom: 2px;
+  left: 0; right: 0;
+  text-align: center;
+}
+
+/* 公式杀号角标(左上角,避开右上角的 ✕) */
+.ball-cell .badge {
+  position: absolute;
+  top: -3px; left: -3px;
+  min-width: 14px; height: 14px;
+  background: linear-gradient(180deg, #ffd700 0%, var(--yellow-2) 100%);
+  color: #1a1300;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  z-index: 6;
+  border: 1px solid rgba(0,0,0,0.3);
+  text-shadow: none;
+}
+
+.ball-cell.killed .badge {
+  background: linear-gradient(180deg, #5a6478 0%, #3a4256 100%);
+  color: rgba(255,255,255,0.5);
+  border-color: rgba(0,0,0,0.5);
+}
+
+/* 用户覆盖态: 公式杀的号被用户恢复(还显示,绿色边框+✓) */
+.ball-cell.rescued {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(46, 204, 113, 0.2) 0%, transparent 50%),
+    linear-gradient(180deg, #2ecc71 0%, #27ae60 50%, #1e8449 100%) !important;
+  color: white !important;
+  border: 1px solid var(--green) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.3),
+    0 0 8px rgba(46, 204, 113, 0.4) !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.ball-cell.rescued::after {
+  content: "✓";
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 12px; height: 12px;
+  background: var(--green);
+  color: white;
+  font-size: 8px;
+  font-weight: 900;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  z-index: 7;
+}
+
+/* 候选池 */
+.candidate-pool {
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.candidate-pool-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.candidate-pool-header .count {
+  color: var(--primary);
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12.5px;
+}
+
+.candidate-list {
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ============== 杀号池(已杀号) ============== */
+.killed-pool {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.04) 0%, transparent 100%);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.killed-pool-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.killed-pool-header .count {
+  color: var(--red);
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12.5px;
+}
+
+.killed-list {
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.killed-item {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #e8eaed;  /* 白字,清楚 */
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 
