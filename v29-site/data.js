@@ -532,7 +532,8 @@ window.DLT_DATA = [
   {period:"2026121", date:"2026-10-24", front:[6,8,19,24,25], back:[1,8]},
   {period:"2026122", date:"2026-10-26", front:[2,14,21,22,24], back:[2,12]},
   {period:"2026123", date:"2026-10-28", front:[13,18,19,20,28], back:[9,11]},
-  {period:"2026124", date:"2026-10-31", front:[12,14,18,22,27], back:[1,9]}
+  {period:"2026124", date:"2026-10-31", front:[12,14,18,22,27], back:[1,9]},
+  {period:"2026125", date:"2026-11-02", front:[12,13,23,25,29], back:[7,10]}
   ];
 
 window.DLT_DATA.sort((a, b) => a.period.localeCompare(b.period));

@@ -56,6 +56,10 @@ body {
 @media (min-width: 768px) { .container { padding: 20px 24px; } }
 
 /* ============== 登录 ============== */
+/* 通用隐藏类:app.js 用 classList.add/remove("hidden") 控制登录框与主界面互斥显示。
+   缺失此规则会导致登录成功后登录框不消失,与主界面叠加。 */
+.hidden { display: none !important; }
+
 .login-screen {
   min-height: 100vh; min-height: 100dvh;
   display: flex; align-items: center; justify-content: center;
