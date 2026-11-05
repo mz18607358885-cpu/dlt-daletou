@@ -23,12 +23,12 @@
 //
 // 用法 (浏览器):
 //   <script src="js/security.js"></script>
-//   Security.unlock('613613');
+//   Security.unlock('918918');
 //   const { url } = Security.generateShareLink();
 //
 // 用法 (Node + jsdom 测试):
 //   const Security = require('./js/security');
-//   Security.unlock('613613'); // true
+//   Security.unlock('918918'); // true
 
 (function (root, factory) {
   'use strict';
@@ -44,14 +44,15 @@
   // 主密码:访问主页时需要输入
   const MAIN_PASSWORD_PLAIN = '918918';
   // 副链接密码:打开分享副链接时需要输入
-  const SHARE_PASSWORD_PLAIN = '613613';
+  const SHARE_PASSWORD_PLAIN = '112233';
 
   // SHA-256 哈希 - 永不存明文密码
   // (预计算避免运行时 await,CommonJS 同步可用)
   // 验证:node -e "console.log(require('crypto').createHash('sha256').update('918918').digest('hex'))"
   const MAIN_PASSWORD_HASH = nodeCreateHash('sha256').update(MAIN_PASSWORD_PLAIN).digest('hex');
   const SHARE_PASSWORD_HASH = nodeCreateHash('sha256').update(SHARE_PASSWORD_PLAIN).digest('hex');
-  // = 'db30c69f84d44c07d90d6fc9643de67d7c7d9cfea7c2f6f705ee1b11ba1e07c7'
+  // 主密码哈希 = '8172146b777ad4bff9a6ca70ab94725517c5bcddcde6e67f4410aa3a7b899de7'
+  // 副密码哈希 = 'e0bc60c82713f64ef8a57c0c40d02ce24fd0141d5cc3086259c19b1e62a62bea'
 
   const STORAGE_KEYS = Object.freeze({
     AUTH_HASH:         'dlt:auth:hash',
@@ -513,14 +514,14 @@
   function buildShareUrl(token) {
     // 仅使用 hash 段,避免 token 泄漏到服务端日志
     // 形如: index.html#share=<uuid>&lock=<sha256>
-    return '#share=' + encodeURIComponent(token); // 不再带 lock - 任何设备+613613 都能用
+    return '#share=' + encodeURIComponent(token); // 不再带 lock - 任何设备+112233 都能用
   }
 
   function generateShareLink(opts) {
     opts = opts || {};
     const token = opts.token || randomUUID();
     const createdAt = opts.createdAt || Date.now();
-    // 不再绑定设备 - 任何设备用副链接密码 613613 都能打开
+    // 不再绑定设备 - 任何设备用副链接密码 112233 都能打开
     const record = { token: token, createdAt: createdAt };
     const list = loadShareLinks();
     list.push(record);
