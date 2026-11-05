@@ -838,13 +838,28 @@ const APP = {
   async fetchFromCloud(silent = false) {
     // 支持 Netlify / 腾讯云 / 本地(Lighthouse/COS)等任意部署
     // 只要 /api/fetch-latest 或 /.netlify/functions/fetch-latest 可访问
+    //
+    // 注意:当前部署在 Cloudflare Pages 上,这两个 Netlify 端点并不存在,
+    // CF Pages 会返回 index.html(HTML 而非 JSON)。因此必须:
+    //   1) 加超时,避免状态栏永远停在"拉取中..."
+    //   2) 校验 Content-Type,HTML 响应直接判定为端点不可用
+    const CLOUD_TIMEOUT_MS = 6000;
     const tryEndpoints = async () => {
-      // 先试 POST
       for (const ep of ["/.netlify/functions/fetch-latest", "/api/fetch-latest"]) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), CLOUD_TIMEOUT_MS);
         try {
-          const r = await fetch(ep, { method: "POST" });
-          if (r.ok) return await r.json();
-        } catch (e) { /* 下个 */ }
+          const r = await fetch(ep, { method: "POST", signal: ctrl.signal });
+          clearTimeout(timer);
+          // 非 JSON 响应(例如 CF Pages 返回的 index.html)视为端点不存在
+          const ct = (r.headers.get("content-type") || "").toLowerCase();
+          if (!r.ok || !ct.includes("application/json")) continue;
+          const j = await r.json();
+          if (j && j.success) return j;
+        } catch (e) {
+          clearTimeout(timer);
+          /* 超时或网络错误,试下一个 */
+        }
       }
       return null;
     };
@@ -877,7 +892,14 @@ const APP = {
       }
     } catch (e) {
       if (!silent) this.toast("云端不可用 - 请手动录入");
-      this.checkDataStatus();
+      this.checkDataFreshness();
+    } finally {
+      // 兜底:无论成功失败,状态栏都不能停在"拉取中..."
+      // (成功/更新的分支已提前 updateDataStatus,这里只在状态仍为"拉取中"时纠正)
+      const ds = document.getElementById("data-status");
+      if (ds && ds.textContent.indexOf("拉取中") !== -1) {
+        this.updateDataStatus(0);
+      }
     }
   },
 
@@ -937,7 +959,7 @@ const APP = {
     showToast(`✓ ${d.period} 期已录入,系统重算中...`, "ok");
     this.learnFromHistory();
     this.selfTuneWeights();
-    this.checkDataStatus();
+    this.checkDataFreshness();
     this.render();
   },
 
@@ -2749,7 +2771,7 @@ const APP = {
       ${learnCard}
       <div class="disclaimer">
         <h4>📊 杀号公式回测分析</h4>
-        <p>本系统基于历史 ${data.length} 期开奖数据,对 13 个杀号公式做回测。
+        <p>本系统基于历史 ${data.length} 期开奖数据,对 15 个杀号公式做回测。
         所有"杀号准确率"均为<strong>过滤型准确率</strong>(杀掉不出现的号),不是预测准确率。
         实际中奖概率仍为每注 1/2142 万,杀号只能减少组合数,无法提高中奖率。</p>
       </div>
