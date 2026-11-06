@@ -115,11 +115,18 @@ window.DeviceTracker = {
     };
   },
 
-  // 云端校验(需要部署 Netlify Function)
+  // 云端校验(需要部署 CF Pages Functions;当前部署不可用时静默降级到本地)
   async _checkCloud(shareToken, fp, limit) {
     try {
-      const resp = await fetch(`/.netlify/functions/devices?share=${shareToken}&fp=${encodeURIComponent(fp)}&limit=${limit}`);
-      if (resp.ok) {
+      // 必须带超时:当前部署在 Cloudflare Pages 上,该端点不存在,
+      // CF Pages 会返回 index.html(HTML 而非 JSON),不设超时会长时间挂起。
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const resp = await fetch(`/.netlify/functions/devices?share=${shareToken}&fp=${encodeURIComponent(fp)}&limit=${limit}`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      // 非 JSON 响应说明端点不存在(HTML 兜底页),视为云端不可用
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (resp.ok && ct.includes("application/json")) {
         return await resp.json();
       }
     } catch (e) {
@@ -128,14 +135,18 @@ window.DeviceTracker = {
     return { success: null };
   },
 
-  // 注册到云端(可选)
+  // 注册到云端(可选,需要 CF Pages Functions)
   async _registerCloud(shareToken, fp) {
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
       await fetch(`/.netlify/functions/devices`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareToken, fp, type: this.deviceType() })
+        body: JSON.stringify({ share: shareToken, fp, type: this.deviceType() }),
+        signal: ctrl.signal
       });
+      clearTimeout(timer);
     } catch (e) {
       // 静默
     }

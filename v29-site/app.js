@@ -203,8 +203,19 @@ const APP = {
     // 启动云端自动拉取(主链接 + 副链接都可以)
     this.startCloudAutoFetch();
     // 主链接登录后立即拉取最新(不等 8 秒)
+    //
+    // 注意:先在后台探测云端端点是否可用,不可用(当前 CF Pages 部署)就完全跳过,
+    // 避免状态栏闪现"拉取中..."。探测期间 showApp() 已把状态栏设为正确状态。
     if (type === "main") {
-      setTimeout(() => this.fetchFromCloud(true), 1500);
+      setTimeout(async () => {
+        const ok = await this._probeCloudEndpoint();
+        if (!ok) {
+          // 端点不可用:保持本地数据状态,不做任何状态栏闪烁
+          this.updateDataStatus(this.checkDataFreshness());
+          return;
+        }
+        this.fetchFromCloud(true);
+      }, 1500);
     }
   },
 
@@ -793,11 +804,26 @@ const APP = {
       if (!this.state.isLoggedIn) return;
       // 只在"未登录后第一次" + 顶栏显示落后时才拉
       if (this.state.hasNewCloudData) return;  // 已有新数据待确认,不重复拉
-      // 静默 GET 检查缓存(比 POST 轻)
-      fetch("/.netlify/functions/fetch-latest", { method: "GET" })
-        .then(r => r.json())
+      // 端点不可用时直接跳过,不发无谓请求
+      if (this._cloudEndpointState === false) return;
+      // 静默 GET 检查缓存(比 POST 轻),必须带超时且校验 JSON,
+      // 否则请求会挂起并让状态栏停在"拉取中..."
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      fetch("/.netlify/functions/fetch-latest", { method: "GET", signal: ctrl.signal })
+        .then(async r => {
+          clearTimeout(timer);
+          const ct = (r.headers.get("content-type") || "").toLowerCase();
+          // 非 JSON 响应(CF Pages 返回 index.html)说明端点不存在,标记为不可用
+          if (!r.ok || !ct.includes("application/json")) {
+            this._cloudEndpointState = false;
+            return null;
+          }
+          return await r.json();
+        })
         .then(json => {
-          if (json.success && json.data) {
+          if (json && json.success && json.data) {
+            this._cloudEndpointState = true;
             const currentLatest = DLT_DATA[DLT_DATA.length - 1];
             if (Number(json.data.period) > Number(currentLatest.period)) {
               // 云端比本地新 → 弹确认
@@ -835,7 +861,52 @@ const APP = {
   },
 
   // ====== 云端拉取最新数据 ======
+  //
+  // 云端端点可用性探测:
+  //   本项目历史上部署在 Netlify,拉数端点为 /.netlify/functions/fetch-latest 或 /api/fetch-latest。
+  //   现在部署在 Cloudflare Pages,这两个端点并不存在 —— CF Pages 对不存在的路径会返回
+  //   index.html(HTML 而非 JSON),导致请求挂起、状态栏卡在"拉取中..."。
+  //
+  //   解决:首次尝试时记录端点是否真的返回 JSON。确认不可用后,后续所有静默拉取
+  //        直接跳过,不再发请求、不再改状态栏,页面加载和登录都是瞬时的。
+  //        用户手动点击"云端拉取"时仍会尝试并给出明确提示。
+  _cloudEndpointState: null,   // null=未探测 | false=不可用 | true=可用
+  _cloudProbePromise: null,
+
+  async _probeCloudEndpoint() {
+    if (this._cloudEndpointState !== null) return this._cloudEndpointState;
+    if (this._cloudProbePromise) return this._cloudProbePromise;
+
+    this._cloudProbePromise = (async () => {
+      const probe = async () => {
+        for (const ep of ["/.netlify/functions/fetch-latest", "/api/fetch-latest"]) {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 4000);
+          try {
+            const r = await fetch(ep, { method: "POST", signal: ctrl.signal });
+            clearTimeout(timer);
+            const ct = (r.headers.get("content-type") || "").toLowerCase();
+            if (r.ok && ct.includes("application/json")) return true;
+          } catch (e) {
+            clearTimeout(timer);
+          }
+        }
+        return false;
+      };
+      const ok = await probe();
+      this._cloudEndpointState = ok;
+      this._cloudProbePromise = null;
+      return ok;
+    })();
+    return this._cloudProbePromise;
+  },
+
   async fetchFromCloud(silent = false) {
+    // 端点不可用时:静默调用直接跳过,完全不打扰用户
+    if (silent && !(await this._probeCloudEndpoint())) {
+      this.updateDataStatus(this.checkDataFreshness());
+      return;
+    }
     // 支持 Netlify / 腾讯云 / 本地(Lighthouse/COS)等任意部署
     // 只要 /api/fetch-latest 或 /.netlify/functions/fetch-latest 可访问
     //
@@ -3080,7 +3151,7 @@ const APP = {
           <li>每个分享链接最多支持 <strong>5 台设备</strong>(手机/电脑/平板各算一台)</li>
           <li>第 6 台设备访问时显示"5 台设备已满",不影响前 5 台使用</li>
           <li>设备识别基于浏览器指纹 + 本地 UUID</li>
-          <li>严格场景建议部署云端校验(Netlify Function)</li>
+          <li>设备计数为<strong>浏览器本地存储</strong>,清缓存可重置;需要强制限制时建议加服务端校验(CF Pages Functions)</li>
         </ul>
       </div>
 
@@ -3150,8 +3221,13 @@ const APP = {
     let devices = [];
     let cloudOk = false;
     try {
-      const resp = await fetch(`/.netlify/functions/devices?share=${encodeURIComponent(token)}`);
-      if (resp.ok) {
+      // 带超时 + 校验 JSON:CF Pages 上该端点不存在,会返回 index.html
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const resp = await fetch(`/.netlify/functions/devices?share=${encodeURIComponent(token)}`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (resp.ok && ct.includes("application/json")) {
         const json = await resp.json();
         if (json.success !== false || json.devices) {
           devices = json.devices || [];
@@ -3215,10 +3291,15 @@ const APP = {
   async removeDevice(token, fp) {
     if (!confirm("确定移除该设备?\n移除后该设备需要重新输入密码才能使用。")) return;
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
       const resp = await fetch(`/.netlify/functions/devices?share=${encodeURIComponent(token)}&fp=${encodeURIComponent(fp)}`, {
-        method: "DELETE"
+        method: "DELETE",
+        signal: ctrl.signal
       });
-      if (resp.ok) {
+      clearTimeout(timer);
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (resp.ok && ct.includes("application/json")) {
         this.toast("✓ 已从云端移除该设备");
       } else {
         this.toast("云端移除失败,降级到本地", "warn");
@@ -3236,10 +3317,15 @@ const APP = {
   async clearAllDevices(token) {
     if (!confirm("⚠ 警告:清空所有设备?\n所有 5 台设备都需要重新注册。\n\n确定继续?")) return;
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
       const resp = await fetch(`/.netlify/functions/devices?share=${encodeURIComponent(token)}`, {
-        method: "DELETE"
+        method: "DELETE",
+        signal: ctrl.signal
       });
-      if (resp.ok) {
+      clearTimeout(timer);
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (resp.ok && ct.includes("application/json")) {
         this.toast("✓ 已从云端清空所有设备");
       } else {
         window.DeviceTracker.clearAllDevices(token);
