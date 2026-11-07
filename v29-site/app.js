@@ -977,7 +977,7 @@ const APP = {
   showCloudConfirmDialog(d) {
     const html = `
       <div class="modal-mask" onclick="if(event.target===this)closeModal()">
-        <div class="modal">
+        <div class="modal-content" style="max-width:520px">
           <div class="modal-title">🌐 云端拉取到新数据</div>
           <div class="cloud-info" style="background:var(--bg-3);padding:14px;border-radius:8px;margin:12px 0">
             <div style="font-size:13px;color:var(--ink-3);margin-bottom:8px">期号: <b style="color:var(--ink);font-size:15px">${d.period}</b>  ·  日期: <b style="color:var(--ink)">${d.date}</b></div>
@@ -3176,7 +3176,7 @@ const APP = {
         <div class="flex between center">
           <div>
             <div class="font-bold">创建新分享链接</div>
-            <div class="text-xs text-muted mt-8">密码 112233,5 设备限制</div>
+            <div class="text-xs text-muted mt-8">密码 112233 · 最多 5 台设备</div>
           </div>
           <button class="btn btn-primary" onclick="APP.createShare()">+ 创建分享</button>
         </div>
